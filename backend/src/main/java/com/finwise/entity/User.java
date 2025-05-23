@@ -54,6 +54,9 @@ public class User {
     @Column(name = "enabled")
     private boolean enabled = true;
 
+    @Column(name = "profile_image_url", length = 500)
+    private String profileImageUrl;
+
     @PreUpdate
     public void setLastUpdate() {
         this.updatedAt = LocalDateTime.now();

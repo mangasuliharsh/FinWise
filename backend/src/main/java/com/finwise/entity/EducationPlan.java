@@ -2,6 +2,7 @@ package com.finwise.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -28,5 +29,6 @@ public class EducationPlan {
 
     @ManyToOne
     @JoinColumn(name = "child_id", nullable = false)
+    @JsonBackReference
     private Child child;
 }

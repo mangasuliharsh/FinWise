@@ -37,6 +37,7 @@ public class CustomOAuth2SuccessHandler implements AuthenticationSuccessHandler 
         String email = oauthUser.getAttribute("email");
         String firstName = oauthUser.getAttribute("given_name");
         String lastName = oauthUser.getAttribute("family_name");
+        String picture = oauthUser.getAttribute("picture");
 
         Optional<User> existingUser = userRepository.findByEmail(email);
 
@@ -44,12 +45,14 @@ public class CustomOAuth2SuccessHandler implements AuthenticationSuccessHandler 
         if (existingUser.isPresent()) {
             user = existingUser.get();
             user.setUpdatedAt(LocalDateTime.now());
+            user.setProfileImageUrl(picture);
         } else {
             user = new User();
             user.setEmail(email);
             user.setUsername(email);
             user.setFirstName(firstName != null ? firstName : "OAuth2User");
             user.setLastName(lastName != null ? lastName : "");
+            user.setProfileImageUrl(picture);
             user.setPassword("");
             user.setRole("USER");
             user.setEnabled(true);
