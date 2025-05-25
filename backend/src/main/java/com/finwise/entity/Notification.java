@@ -2,7 +2,9 @@ package com.finwise.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -18,6 +20,8 @@ public class Notification {
     private String message;
     private boolean isRead = false;
     private String notificationType;
+    @CreationTimestamp
+    private LocalDateTime createdDate;
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)

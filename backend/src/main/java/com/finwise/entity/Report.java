@@ -2,7 +2,9 @@ package com.finwise.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -17,6 +19,8 @@ public class Report {
     private String reportName;
     private String reportType;
     private String filePath;
+    @CreationTimestamp
+    private LocalDateTime generatedDate;
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)

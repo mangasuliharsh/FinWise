@@ -34,11 +34,11 @@ public class User {
     @Column(name = "last_name", nullable = false, length = 50)
     private String lastName;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @Column(name = "created_date", nullable = false, updatable = false)
+    private LocalDateTime createdDate = LocalDateTime.now();
 
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    @Column(name = "last_updated_date")
+    private LocalDateTime lastUpdatedDate = LocalDateTime.now();
 
     @Column(length = 20)
     private String role = "USER";
@@ -60,7 +60,7 @@ public class User {
 
     @PreUpdate
     public void setLastUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.lastUpdatedDate = LocalDateTime.now();
     }
 
     @OneToMany(mappedBy = "user")
