@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
     DollarSign,
     BookOpen,
@@ -23,6 +23,7 @@ import {
     FileText,
     Plus
 } from 'lucide-react';
+import axios from "axios";
 
 // Enhanced data structure based on DB schema
 const familyProfile = {
@@ -148,17 +149,203 @@ const notifications = [
     { id: 3, title: 'Goal Achievement', message: 'Emergency fund reached 30% of target!', type: 'SUCCESS', isRead: true }
 ];
 
+// Education Page Component
+function EducationPage({ childrenList }) {
+    return (
+        <div className="space-y-6">
+            <h2 className="text-3xl font-bold text-white mb-6">Education Planning</h2>
+
+            <div className="grid gap-6 md:grid-cols-2">
+                {educationPlans.map(plan => {
+                    const progress = Math.min((plan.currentSavings / plan.estimatedTotalCost) * 100, 100);
+                    const yearsLeft = plan.estimatedStartYear - new Date().getFullYear();
+
+                    return (
+                        <div key={plan.id} className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-xl font-semibold text-white">{plan.planName}</h3>
+                                <BookOpen className="text-emerald-400" size={24} />
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <div className="flex justify-between mb-2">
+                                        <span className="text-gray-300">Progress</span>
+                                        <span className="text-emerald-400">{progress.toFixed(1)}%</span>
+                                    </div>
+                                    <div className="w-full bg-gray-700 rounded-full h-2">
+                                        <div
+                                            className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
+                                            style={{ width: `${progress}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <p className="text-gray-400">Current Savings</p>
+                                        <p className="text-white font-semibold">₹{plan.currentSavings.toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-gray-400">Target Amount</p>
+                                        <p className="text-white font-semibold">₹{plan.estimatedTotalCost.toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-gray-400">Monthly SIP</p>
+                                        <p className="text-white font-semibold">₹{plan.monthlyContribution.toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-gray-400">Years Left</p>
+                                        <p className="text-white font-semibold">{yearsLeft} years</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+                <h3 className="text-xl font-semibold text-white mb-4">Children Details</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                    {childrenList && childrenList.map((child, idx) => (
+                        <div key={idx} className="bg-white/10 rounded-lg p-4">
+                            <h4 className="text-white font-semibold">{child.name}</h4>
+                            <p className="text-gray-300 text-sm">Age: {new Date().getFullYear() - new Date(child.dateOfBirth).getFullYear()} years</p>
+                            <p className="text-gray-300 text-sm">Education Level: {child.currentEducationLevel}</p>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Marriage Page Component
+function MarriagePage() {
+    return (
+        <div className="space-y-6">
+            <h2 className="text-3xl font-bold text-white mb-6">Marriage Planning</h2>
+
+            <div className="grid gap-6 md:grid-cols-2">
+                {marriagePlans.map(plan => {
+                    const progress = Math.min((plan.currentSavings / plan.estimatedTotalCost) * 100, 100);
+                    const yearsLeft = plan.estimatedYear - new Date().getFullYear();
+
+                    return (
+                        <div key={plan.id} className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-xl font-semibold text-white">{plan.planName}</h3>
+                                <Heart className="text-emerald-400" size={24} />
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <p className="text-gray-300 mb-2">For: {plan.forName} ({plan.relationship})</p>
+                                    <div className="flex justify-between mb-2">
+                                        <span className="text-gray-300">Progress</span>
+                                        <span className="text-emerald-400">{progress.toFixed(1)}%</span>
+                                    </div>
+                                    <div className="w-full bg-gray-700 rounded-full h-2">
+                                        <div
+                                            className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
+                                            style={{ width: `${progress}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <p className="text-gray-400">Current Savings</p>
+                                        <p className="text-white font-semibold">₹{plan.currentSavings.toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-gray-400">Target Amount</p>
+                                        <p className="text-white font-semibold">₹{plan.estimatedTotalCost.toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-gray-400">Monthly SIP</p>
+                                        <p className="text-white font-semibold">₹{plan.monthlyContribution.toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-gray-400">Estimated Year</p>
+                                        <p className="text-white font-semibold">{plan.estimatedYear} ({yearsLeft} years)</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+// Investment Page Component
+function InvestmentPage() {
+    return (
+        <div className="space-y-6">
+            <h2 className="text-3xl font-bold text-white mb-6">Investment Options</h2>
+
+            <div className="grid gap-6 md:grid-cols-2">
+                {investmentOptions.map(option => {
+                    const getRiskColor = (risk) => {
+                        switch (risk) {
+                            case 'HIGH': return 'text-red-400 bg-red-900/20';
+                            case 'MEDIUM': return 'text-yellow-400 bg-yellow-900/20';
+                            case 'LOW': return 'text-green-400 bg-green-900/20';
+                            default: return 'text-gray-400 bg-gray-900/20';
+                        }
+                    };
+
+                    return (
+                        <div key={option.id} className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-xl font-semibold text-white">{option.name}</h3>
+                                <TrendingUp className="text-emerald-400" size={24} />
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <p className="text-gray-400">Type</p>
+                                        <p className="text-white font-semibold">{option.type}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-gray-400">Expected Return</p>
+                                        <p className="text-emerald-400 font-semibold">{option.expectedAnnualReturn}% p.a.</p>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p className="text-gray-400 mb-2">Risk Level</p>
+                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getRiskColor(option.riskLevel)}`}>
+                                        {option.riskLevel}
+                                    </span>
+                                </div>
+
+                                <button className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors">
+                                    Invest Now
+                                </button>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
 export default function EnhancedDashboard() {
     const [activeTab, setActiveTab] = useState('overview');
     const [selectedTimeframe, setSelectedTimeframe] = useState('monthly');
 
-    // Calculate total savings across all plans
+    // Calculate totals
     const totalEducationSavings = educationPlans.reduce((sum, plan) => sum + plan.currentSavings, 0);
     const totalMarriageSavings = marriagePlans.reduce((sum, plan) => sum + plan.currentSavings, 0);
     const totalGeneralSavings = savingsPlans.reduce((sum, plan) => sum + plan.currentAmount, 0);
     const totalSavings = totalEducationSavings + totalMarriageSavings + totalGeneralSavings;
 
-    // Calculate total monthly contributions
     const totalMonthlyContributions = [
         ...educationPlans.map(p => p.monthlyContribution),
         ...marriagePlans.map(p => p.monthlyContribution),
@@ -213,9 +400,12 @@ export default function EnhancedDashboard() {
         return "bg-red-500";
     };
 
+    // Dashboard tab state
+    const [dashboardTab, setDashboardTab] = useState('overview');
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-950 text-white pb-10">
-            {/* Enhanced Navigation Bar */}
+            {/* Navigation Bar */}
             <nav className="px-6 py-4 flex justify-between items-center md:px-16 lg:px-24 border-b border-white/10">
                 <div className="flex items-center space-x-3">
                     <DollarSign size={24} className="text-emerald-400" />
@@ -252,360 +442,141 @@ export default function EnhancedDashboard() {
                 </div>
             </nav>
 
+            {/* Dashboard Tabs */}
             <div className="max-w-7xl mx-auto px-6 md:px-16 lg:px-24 mt-8">
-                {/* Enhanced Dashboard Header */}
-                <div className="mb-8">
-                    <h2 className="text-3xl font-bold">Family Financial Dashboard</h2>
-                    <p className="text-gray-300">Comprehensive financial planning for your family's future</p>
-                    <div className="mt-4 flex items-center space-x-6 text-sm">
-                        <div className="flex items-center">
-                            <Briefcase size={16} className="text-emerald-400 mr-2" />
-                            <span>Monthly Income: ₹{familyProfile.monthlyIncome.toLocaleString()}</span>
-                        </div>
-                        <div className="flex items-center">
-                            <Calculator size={16} className="text-red-400 mr-2" />
-                            <span>Monthly Expenses: ₹{familyProfile.monthlyExpenses.toLocaleString()}</span>
-                        </div>
-                        <div className="flex items-center">
-                            <TrendingUp size={16} className="text-green-400 mr-2" />
-                            <span>Net Savings: ₹{familyProfile.netMonthlySavings.toLocaleString()}</span>
-                        </div>
-                    </div>
+                <div className="flex gap-4 mb-8">
+                    <button
+                        className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                            dashboardTab === 'overview'
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-white/10 text-gray-200 hover:bg-white/20'
+                        }`}
+                        onClick={() => setDashboardTab('overview')}
+                    >
+                        Overview
+                    </button>
+                    <button
+                        className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                            dashboardTab === 'education'
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-white/10 text-gray-200 hover:bg-white/20'
+                        }`}
+                        onClick={() => setDashboardTab('education')}
+                    >
+                        Education
+                    </button>
+                    <button
+                        className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                            dashboardTab === 'marriage'
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-white/10 text-gray-200 hover:bg-white/20'
+                        }`}
+                        onClick={() => setDashboardTab('marriage')}
+                    >
+                        Marriage
+                    </button>
+                    <button
+                        className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                            dashboardTab === 'investment'
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-white/10 text-gray-200 hover:bg-white/20'
+                        }`}
+                        onClick={() => setDashboardTab('investment')}
+                    >
+                        Investment
+                    </button>
                 </div>
 
-                {/* Enhanced Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-                    <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 hover:border-emerald-500/50 transition">
-                        <div className="flex justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-300">Total Savings</p>
-                                <p className="text-2xl font-bold">₹{totalSavings.toLocaleString()}</p>
-                            </div>
-                            <div className="h-12 w-12 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                                <DollarSign size={24} className="text-emerald-400" />
-                            </div>
-                        </div>
-                        <div className="mt-2 flex items-center text-xs text-emerald-400">
-                            <ArrowUp size={12} className="mr-1" />
-                            <span>8.2% from last month</span>
-                        </div>
-                    </div>
-
-                    <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 hover:border-emerald-500/50 transition">
-                        <div className="flex justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-300">Education Funds</p>
-                                <p className="text-2xl font-bold">₹{totalEducationSavings.toLocaleString()}</p>
-                            </div>
-                            <div className="h-12 w-12 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                                <BookOpen size={24} className="text-emerald-400" />
-                            </div>
-                        </div>
-                        <div className="mt-2 text-xs text-gray-400">
-                            <span>{educationPlans.length} active plans</span>
-                        </div>
-                    </div>
-
-                    <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 hover:border-emerald-500/50 transition">
-                        <div className="flex justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-300">Marriage Funds</p>
-                                <p className="text-2xl font-bold">₹{totalMarriageSavings.toLocaleString()}</p>
-                            </div>
-                            <div className="h-12 w-12 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                                <Heart size={24} className="text-emerald-400" />
-                            </div>
-                        </div>
-                        <div className="mt-2 text-xs text-gray-400">
-                            <span>{marriagePlans.length} wedding plans</span>
-                        </div>
-                    </div>
-
-                    <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 hover:border-emerald-500/50 transition">
-                        <div className="flex justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-300">General Savings</p>
-                                <p className="text-2xl font-bold">₹{totalGeneralSavings.toLocaleString()}</p>
-                            </div>
-                            <div className="h-12 w-12 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                                <Target size={24} className="text-emerald-400" />
-                            </div>
-                        </div>
-                        <div className="mt-2 text-xs text-gray-400">
-                            <span>{savingsPlans.length} savings goals</span>
-                        </div>
-                    </div>
-
-                    <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 hover:border-emerald-500/50 transition">
-                        <div className="flex justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-300">Monthly SIP</p>
-                                <p className="text-2xl font-bold">₹{totalMonthlyContributions.toLocaleString()}</p>
-                            </div>
-                            <div className="h-12 w-12 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                                <TrendingUp size={24} className="text-emerald-400" />
-                            </div>
-                        </div>
-                        <div className="mt-2 flex items-center text-xs text-yellow-400">
-                            <AlertTriangle size={12} className="mr-1" />
-                            <span>{((totalMonthlyContributions / familyProfile.netMonthlySavings) * 100).toFixed(1)}% of net savings</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Enhanced Main Content */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Left Column - Enhanced */}
-                    <div className="lg:col-span-2 space-y-8">
-                        {/* Children & Education Plans */}
-                        <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-xl font-semibold">Children & Education Planning</h3>
-                                <button className="text-emerald-400 text-sm hover:underline flex items-center">
-                                    <Plus size={16} className="mr-1" />
-                                    Add Child
-                                </button>
-                            </div>
-
-                            <div className="space-y-6">
-                                {children.map((child) => {
-                                    const childPlans = educationPlans.filter(plan => plan.childId === child.id);
-                                    return (
-                                        <div key={child.id} className="bg-white/5 rounded-lg p-4">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div>
-                                                    <h4 className="font-semibold text-lg">{child.name}</h4>
-                                                    <p className="text-sm text-gray-400">
-                                                        Age: {calculateAge(child.dateOfBirth)} years | Level: {child.currentEducationLevel}
-                                                    </p>
-                                                </div>
-                                                <button className="text-emerald-400 text-sm hover:underline">
-                                                    Edit Plans
-                                                </button>
-                                            </div>
-
-                                            {childPlans.map((plan) => {
-                                                const progress = calculateProgressPercentage(plan.currentSavings, plan.estimatedTotalCost);
-                                                return (
-                                                    <div key={plan.id} className="mb-4 last:mb-0">
-                                                        <div className="flex justify-between items-center mb-2">
-                                                            <span className="text-sm font-medium">{plan.planName}</span>
-                                                            <span className="text-sm">{progress}%</span>
-                                                        </div>
-                                                        <div className="w-full bg-white/10 rounded-full h-2">
-                                                            <div
-                                                                className={`h-2 rounded-full ${getProgressColor(progress)}`}
-                                                                style={{ width: `${progress}%` }}
-                                                            ></div>
-                                                        </div>
-                                                        <div className="flex justify-between mt-1 text-xs text-gray-400">
-                                                            <span>₹{plan.currentSavings.toLocaleString()}</span>
-                                                            <span>Target: ₹{plan.estimatedTotalCost.toLocaleString()}</span>
-                                                        </div>
-                                                        <div className="mt-2 text-xs text-gray-400">
-                                                            <span>Monthly SIP: ₹{plan.monthlyContribution.toLocaleString()} | </span>
-                                                            <span>Start Year: {plan.estimatedStartYear}</span>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                {/* Tab Content */}
+                {dashboardTab === 'overview' && (
+                    <div className="space-y-8">
+                        {/* Header */}
+                        <div className="mb-8">
+                            <h2 className="text-3xl font-bold">Family Financial Dashboard</h2>
+                            <p className="text-gray-300">Comprehensive financial planning for your family's future</p>
                         </div>
 
-                        {/* Marriage Planning */}
-                        <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-xl font-semibold">Marriage Planning</h3>
-                                <button className="text-emerald-400 text-sm hover:underline flex items-center">
-                                    <Plus size={16} className="mr-1" />
-                                    Add Plan
-                                </button>
+                        {/* Summary Cards */}
+                        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="bg-emerald-500/20 rounded-lg p-3">
+                                        <DollarSign className="h-6 w-6 text-emerald-400" />
+                                    </div>
+                                    <ArrowUp className="h-4 w-4 text-emerald-400" />
+                                </div>
+                                <h3 className="text-2xl font-bold text-white">₹{totalSavings.toLocaleString()}</h3>
+                                <p className="text-gray-400">Total Savings</p>
                             </div>
 
-                            <div className="space-y-4">
-                                {marriagePlans.map((plan) => {
-                                    const progress = calculateProgressPercentage(plan.currentSavings, plan.estimatedTotalCost);
-                                    return (
-                                        <div key={plan.id} className="bg-white/5 rounded-lg p-4">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <div>
-                                                    <h4 className="font-medium">{plan.planName}</h4>
-                                                    <p className="text-sm text-gray-400">
-                                                        For: {plan.forName} ({plan.relationship}) | Year: {plan.estimatedYear}
-                                                    </p>
-                                                </div>
-                                                <span className="text-sm font-medium">{progress}%</span>
-                                            </div>
-                                            <div className="w-full bg-white/10 rounded-full h-2 mb-2">
-                                                <div
-                                                    className={`h-2 rounded-full ${getProgressColor(progress)}`}
-                                                    style={{ width: `${progress}%` }}
-                                                ></div>
-                                            </div>
-                                            <div className="flex justify-between text-xs text-gray-400">
-                                                <span>₹{plan.currentSavings.toLocaleString()}</span>
-                                                <span>Target: ₹{plan.estimatedTotalCost.toLocaleString()}</span>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="bg-blue-500/20 rounded-lg p-3">
+                                        <TrendingUp className="h-6 w-6 text-blue-400" />
+                                    </div>
+                                    <ArrowUp className="h-4 w-4 text-green-400" />
+                                </div>
+                                <h3 className="text-2xl font-bold text-white">₹{familyProfile.monthlyIncome.toLocaleString()}</h3>
+                                <p className="text-gray-400">Monthly Income</p>
+                            </div>
+
+                            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="bg-purple-500/20 rounded-lg p-3">
+                                        <Target className="h-6 w-6 text-purple-400" />
+                                    </div>
+                                    <ArrowDown className="h-4 w-4 text-red-400" />
+                                </div>
+                                <h3 className="text-2xl font-bold text-white">₹{familyProfile.monthlyExpenses.toLocaleString()}</h3>
+                                <p className="text-gray-400">Monthly Expenses</p>
+                            </div>
+
+                            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="bg-yellow-500/20 rounded-lg p-3">
+                                        <PieChart className="h-6 w-6 text-yellow-400" />
+                                    </div>
+                                    <ArrowUp className="h-4 w-4 text-emerald-400" />
+                                </div>
+                                <h3 className="text-2xl font-bold text-white">₹{totalMonthlyContributions.toLocaleString()}</h3>
+                                <p className="text-gray-400">Monthly Investments</p>
                             </div>
                         </div>
 
                         {/* Recent Transactions */}
                         <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-xl font-semibold">Recent Transactions</h3>
-                                <button className="text-emerald-400 text-sm hover:underline">View All</button>
-                            </div>
-
+                            <h3 className="text-xl font-semibold mb-4">Recent Transactions</h3>
                             <div className="space-y-3">
-                                {recentTransactions.slice(0, 5).map((transaction) => (
-                                    <div key={transaction.id} className="flex items-center justify-between p-3 hover:bg-white/5 rounded-lg">
-                                        <div className="flex items-center">
-                                            <div className="mr-3">
-                                                {getCategoryIcon(transaction.relatedPlanType)}
-                                            </div>
+                                {recentTransactions.slice(0, 5).map(transaction => (
+                                    <div key={transaction.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                                        <div className="flex items-center space-x-3">
+                                            {getCategoryIcon(transaction.relatedPlanType)}
                                             <div>
-                                                <p className="text-sm font-medium">{transaction.description}</p>
-                                                <p className="text-xs text-gray-400">{transaction.date}</p>
+                                                <p className="text-white font-medium">{transaction.description}</p>
+                                                <p className="text-gray-400 text-sm">{transaction.date}</p>
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="text-sm font-medium text-emerald-400">
-                                                +₹{transaction.amount.toLocaleString()}
-                                            </p>
-                                            <p className="text-xs text-gray-400">{transaction.type}</p>
-                                        </div>
+                                        <span className="text-emerald-400 font-semibold">
+                                            +₹{transaction.amount.toLocaleString()}
+                                        </span>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     </div>
+                )}
 
-                    {/* Right Column - Enhanced */}
-                    <div className="space-y-6">
-                        {/* Investment Portfolio */}
-                        <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-semibold">Investment Options</h3>
-                                <PieChart size={18} className="text-emerald-400" />
-                            </div>
+                {dashboardTab === 'education' && (
+                    <EducationPage childrenList={children} />
+                )}
 
-                            <div className="space-y-3">
-                                {investmentOptions.map((option) => (
-                                    <div key={option.id} className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
-                                        <div>
-                                            <p className="text-sm font-medium">{option.name}</p>
-                                            <p className="text-xs text-gray-400">{option.type}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-sm font-medium">{option.expectedAnnualReturn}%</p>
-                                            <p className={`text-xs ${getRiskColor(option.riskLevel)}`}>
-                                                {option.riskLevel} Risk
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                {dashboardTab === 'marriage' && (
+                    <MarriagePage />
+                )}
 
-                        {/* Savings Goals */}
-                        <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-semibold">Savings Goals</h3>
-                                <Target size={18} className="text-emerald-400" />
-                            </div>
-
-                            <div className="space-y-4">
-                                {savingsPlans.map((plan) => {
-                                    const progress = calculateProgressPercentage(plan.currentAmount, plan.goalAmount);
-                                    return (
-                                        <div key={plan.id}>
-                                            <div className="flex justify-between items-center mb-2">
-                                                <div>
-                                                    <p className="text-sm font-medium">{plan.planName}</p>
-                                                    <p className="text-xs text-gray-400">{plan.purpose}</p>
-                                                </div>
-                                                <span className={`text-xs px-2 py-1 rounded border ${getPriorityColor(plan.priority)}`}>
-                                                    {plan.priority}
-                                                </span>
-                                            </div>
-                                            <div className="w-full bg-white/10 rounded-full h-2 mb-1">
-                                                <div
-                                                    className={`h-2 rounded-full ${getProgressColor(progress)}`}
-                                                    style={{ width: `${progress}%` }}
-                                                ></div>
-                                            </div>
-                                            <div className="flex justify-between text-xs text-gray-400">
-                                                <span>₹{plan.currentAmount.toLocaleString()}</span>
-                                                <span>₹{plan.goalAmount.toLocaleString()}</span>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        {/* Notifications */}
-                        <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-semibold">Notifications</h3>
-                                <Bell size={18} className="text-emerald-400" />
-                            </div>
-
-                            <div className="space-y-3">
-                                {notifications.slice(0, 3).map((notification) => (
-                                    <div key={notification.id} className={`p-3 rounded-lg border ${
-                                        notification.type === 'WARNING' ? 'bg-yellow-900/20 border-yellow-800/30' :
-                                            notification.type === 'SUCCESS' ? 'bg-green-900/20 border-green-800/30' :
-                                                'bg-blue-900/20 border-blue-800/30'
-                                    }`}>
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <p className="text-sm font-medium">{notification.title}</p>
-                                                <p className="text-xs text-gray-400 mt-1">{notification.message}</p>
-                                            </div>
-                                            {!notification.isRead && (
-                                                <div className="h-2 w-2 bg-emerald-400 rounded-full"></div>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Quick Actions */}
-                        <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-                            <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <button className="p-3 bg-emerald-500/20 rounded-lg hover:bg-emerald-500/30 flex flex-col items-center">
-                                    <Plus size={18} className="text-emerald-400 mb-1" />
-                                    <span className="text-sm font-medium">Add Goal</span>
-                                </button>
-
-                                <button className="p-3 bg-blue-500/20 rounded-lg hover:bg-blue-500/30 flex flex-col items-center">
-                                    <FileText size={18} className="text-blue-400 mb-1" />
-                                    <span className="text-sm font-medium">Reports</span>
-                                </button>
-
-                                <button className="p-3 bg-purple-500/20 rounded-lg hover:bg-purple-500/30 flex flex-col items-center">
-                                    <Calculator size={18} className="text-purple-400 mb-1" />
-                                    <span className="text-sm font-medium">Calculator</span>
-                                </button>
-
-                                <button className="p-3 bg-yellow-500/20 rounded-lg hover:bg-yellow-500/30 flex flex-col items-center">
-                                    <BarChart2 size={18} className="text-yellow-400 mb-1" />
-                                    <span className="text-sm font-medium">Analytics</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                {dashboardTab === 'investment' && (
+                    <InvestmentPage />
+                )}
             </div>
         </div>
     );
