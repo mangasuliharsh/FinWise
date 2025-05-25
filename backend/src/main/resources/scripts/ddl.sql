@@ -10,13 +10,14 @@ CREATE TABLE users (
                        password VARCHAR(255) NOT NULL,
                        first_name VARCHAR(50) NOT NULL,
                        last_name VARCHAR(50) NOT NULL,
-                       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                       created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                       last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                        role VARCHAR(20) DEFAULT 'USER',
                        account_non_expired BOOLEAN DEFAULT TRUE,
                        account_non_locked BOOLEAN DEFAULT TRUE,
                        credentials_non_expired BOOLEAN DEFAULT TRUE,
-                       enabled BOOLEAN DEFAULT TRUE
+                       enabled BOOLEAN DEFAULT TRUE,
+                       image_url varchar(255)
 );
 
 -- 3. Family Profiles Table
@@ -28,8 +29,8 @@ CREATE TABLE family_profiles (
                                  monthly_expenses DECIMAL(15,2) NOT NULL,
                                  location VARCHAR(100),
                                  risk_tolerance VARCHAR(10) CHECK (risk_tolerance IN ('LOW', 'MEDIUM', 'HIGH')) DEFAULT 'MEDIUM',
-                                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                                 created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                 last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                                  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
@@ -40,8 +41,8 @@ CREATE TABLE children (
                           name VARCHAR(100) NOT NULL,
                           date_of_birth DATE NOT NULL,
                           current_education_level VARCHAR(50),
-                          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                          created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                          last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                           FOREIGN KEY (family_profile_id) REFERENCES family_profiles(id) ON DELETE CASCADE
 );
 
@@ -59,8 +60,8 @@ CREATE TABLE education_plans (
                                  monthly_contribution DECIMAL(15,2) DEFAULT 0,
                                  inflation_rate DECIMAL(5,2) DEFAULT 6.00,
                                  notes TEXT,
-                                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                                 created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                 last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                                  FOREIGN KEY (child_id) REFERENCES children(id) ON DELETE CASCADE
 );
 
@@ -77,8 +78,8 @@ CREATE TABLE marriage_plans (
                                 monthly_contribution DECIMAL(15,2) DEFAULT 0,
                                 inflation_rate DECIMAL(5,2) DEFAULT 6.00,
                                 notes TEXT,
-                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                                created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                                 FOREIGN KEY (family_profile_id) REFERENCES family_profiles(id) ON DELETE CASCADE
 );
 
@@ -90,8 +91,8 @@ CREATE TABLE marriage_expense_categories (
                                              estimated_cost DECIMAL(15,2) NOT NULL,
                                              priority VARCHAR(10) CHECK (priority IN ('LOW', 'MEDIUM', 'HIGH')) DEFAULT 'MEDIUM',
                                              notes TEXT,
-                                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                                             created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                             last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                                              FOREIGN KEY (marriage_plan_id) REFERENCES marriage_plans(id) ON DELETE CASCADE
 );
 
@@ -107,8 +108,8 @@ CREATE TABLE savings_plans (
                                purpose VARCHAR(100),
                                priority VARCHAR(10) CHECK (priority IN ('LOW', 'MEDIUM', 'HIGH')) DEFAULT 'MEDIUM',
                                notes TEXT,
-                               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                               updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                               created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                               last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                                FOREIGN KEY (family_profile_id) REFERENCES family_profiles(id) ON DELETE CASCADE
 );
 
@@ -122,8 +123,8 @@ CREATE TABLE investment_options (
                                     min_investment_period INT,
                                     description TEXT,
                                     is_active BOOLEAN DEFAULT TRUE,
-                                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                                    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                    last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- 10. Investments Table
@@ -136,8 +137,8 @@ CREATE TABLE investments (
                              maturity_date DATE,
                              current_value DECIMAL(15,2),
                              status VARCHAR(20) CHECK (status IN ('ACTIVE', 'MATURED', 'WITHDRAWN')) DEFAULT 'ACTIVE',
-                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                             created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                             last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                              FOREIGN KEY (savings_plan_id) REFERENCES savings_plans(id) ON DELETE CASCADE,
                              FOREIGN KEY (investment_option_id) REFERENCES investment_options(id)
 );
@@ -152,7 +153,7 @@ CREATE TABLE financial_transactions (
                                         description TEXT,
                                         related_plan_id BIGINT,
                                         related_plan_type VARCHAR(20),
-                                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                        created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                                         FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
@@ -164,7 +165,7 @@ CREATE TABLE notifications (
                                message TEXT NOT NULL,
                                is_read BOOLEAN DEFAULT FALSE,
                                notification_type VARCHAR(20) NOT NULL,
-                               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                               created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
@@ -177,8 +178,8 @@ CREATE TABLE education_cost_references (
                                            average_annual_cost DECIMAL(15,2) NOT NULL,
                                            year INT NOT NULL,
                                            data_source VARCHAR(255),
-                                           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                                           created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                           last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- 14. Marriage Cost References Table
@@ -189,8 +190,8 @@ CREATE TABLE marriage_cost_references (
                                           average_cost DECIMAL(15,2) NOT NULL,
                                           year INT NOT NULL,
                                           data_source VARCHAR(255),
-                                          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                                          created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                          last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- 15. Economic Indicators Table
@@ -201,8 +202,8 @@ CREATE TABLE economic_indicators (
                                      year INT NOT NULL,
                                      month INT,
                                      data_source VARCHAR(255),
-                                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                                     created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                     last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- 16. Reports Table
