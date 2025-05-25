@@ -1,9 +1,13 @@
 package com.finwise.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -23,17 +27,25 @@ public class FamilyProfile {
     @Column(name = "risk_tolerance")
     private String riskTolerance = "MEDIUM";
 
+    @CreationTimestamp
+    private LocalDateTime createdDate;
+    @UpdateTimestamp
+    private LocalDateTime lastUpdatedDate;
+
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @OneToMany(mappedBy = "familyProfile", cascade = CascadeType.ALL)
+    @JsonIgnore
     private List<Child> children;
 
     @OneToMany(mappedBy = "familyProfile", cascade = CascadeType.ALL)
+    @JsonIgnore
     private List<MarriagePlan> marriagePlans;
 
     @OneToMany(mappedBy = "familyProfile", cascade = CascadeType.ALL)
+    @JsonIgnore
     private List<SavingsPlan> savingsPlans;
 }
 

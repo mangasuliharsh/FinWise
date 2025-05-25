@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "users")
@@ -61,4 +62,9 @@ public class User {
     public void setLastUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
+
+    @OneToMany(mappedBy = "user")
+    private List<FamilyProfile> profiles;
+    @OneToMany(mappedBy = "usernoti")
+    private List<Notification> notifications;
 }

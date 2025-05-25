@@ -7,6 +7,8 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class FamilyProfileDTO {
@@ -30,7 +32,7 @@ public class FamilyProfileDTO {
     @NotBlank(message = "Risk tolerance must not be blank")
     private String riskTolerance;
 
-    @NotNull(message = "User ID must be provided")
+
     private Long userId;
 
     private List<Long> childrenIds;

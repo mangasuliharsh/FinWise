@@ -1,12 +1,15 @@
 package com.finwise.controller;
 
 import com.finwise.dto.ChildDTO;
+import com.finwise.dto.MarriagePlanDTO;
 import com.finwise.service.ChildService;
+import com.finwise.service.MarriagePlanService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/children")
@@ -40,4 +43,11 @@ public class ChildController {
         childService.deleteChild(id);
         return ResponseEntity.noContent().build();
     }
+    @PatchMapping("/{id}")
+    public ResponseEntity<ChildDTO> patchChild(@PathVariable Long id, @RequestBody Map<String, Object> updates) {
+        ChildDTO updatedDto = childService.patchChild(updates, id);
+        return ResponseEntity.ok(updatedDto);
+    }
+
 }
+
