@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { User, Users, DollarSign, GraduationCap, MapPin, Plus, X, Shield } from 'lucide-react';
+import axios from "axios";
 
 const FamilyDetails = () => {
+    const navigate = useNavigate();
     const [familySize, setFamilySize] = useState('');
     const [monthlyIncome, setMonthlyIncome] = useState('');
     const [monthlyExpenses, setMonthlyExpenses] = useState('');
@@ -25,8 +27,15 @@ const FamilyDetails = () => {
         setChildren(updatedChildren);
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        try {
+            await axios.post('http://localhost:8080/api/family/profile', form, {withCredentials: true});
+            navigate('/dashboard');
+        } catch (error) {
+            alert('Error saving family details!');
+
+    };
         const familyData = {
             familySize: parseInt(familySize),
             monthlyIncome: parseFloat(monthlyIncome),
