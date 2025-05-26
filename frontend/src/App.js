@@ -1,24 +1,23 @@
-import {
-    BrowserRouter as Router,
-    Routes,
-    Route,
-    Navigate
-} from "react-router-dom";
-import Landing from './components/landing'; // Fixed import name and path
-import FamilyDetails from './components/FamilyDetails';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Dashboard from './components/Dashboard';
+import FamilyDetails from './components/FamilyProfile/FamilyDetails';
+import AuthCallback from './components/AuthCallback';
+import DynamicNavbar from './components/DynamicNavbar';
+import LandingPage from './components/landing';
 
-function App() { // Changed function name from main to App
+function App() {
     return (
         <Router>
             <Routes>
-                <Route path="/" element={<Landing />} />
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
                 <Route path="/family-details" element={<FamilyDetails />} />
-                <Route path="/dashboard/*" element={<Dashboard />} />
-                <Route path="*" element={<Navigate to="/" />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+
             </Routes>
         </Router>
     );
 }
 
-export default App; // Changed export from main to App
+export default App;
