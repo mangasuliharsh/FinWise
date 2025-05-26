@@ -2,6 +2,7 @@ package com.finwise.config;
 
 import com.finwise.entity.User;
 import com.finwise.repository.UserRepository;
+import com.finwise.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class CustomOAuth2SuccessHandler implements AuthenticationSuccessHandler 
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
+    private final UserService userService;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -59,6 +61,7 @@ public class CustomOAuth2SuccessHandler implements AuthenticationSuccessHandler 
             user.setCredentialsNonExpired(true);
             user.setCreatedDate(LocalDateTime.now());
             user.setImage_url(image);
+            user.setNewUser(true);
         }
 
         userRepository.save(user);

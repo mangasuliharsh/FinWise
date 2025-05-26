@@ -8,8 +8,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "users")
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -58,6 +57,9 @@ public class User {
     @Column(name = "image_url")
     private String image_url;
 
+    @Column(name = "is_new_user")
+    private boolean isNewUser;
+
     @PreUpdate
     public void setLastUpdate() {
         this.lastUpdatedDate = LocalDateTime.now();
@@ -67,4 +69,8 @@ public class User {
     private List<FamilyProfile> profiles;
     @OneToMany(mappedBy = "usernoti")
     private List<Notification> notifications;
+
+    public boolean newUser() {
+        return isNewUser;
+    }
 }

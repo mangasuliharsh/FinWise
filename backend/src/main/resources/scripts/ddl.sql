@@ -3,22 +3,27 @@ CREATE DATABASE IF NOT EXISTS FinWise;
 USE FinWise;
 
 -- 2. Users Table
-CREATE TABLE users (
-                       id BIGINT AUTO_INCREMENT PRIMARY KEY,
-                       username VARCHAR(50) NOT NULL UNIQUE,
-                       email VARCHAR(100) NOT NULL UNIQUE,
-                       password VARCHAR(255) NOT NULL,
-                       first_name VARCHAR(50) NOT NULL,
-                       last_name VARCHAR(50) NOT NULL,
-                       created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                       last_updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                       role VARCHAR(20) DEFAULT 'USER',
-                       account_non_expired BOOLEAN DEFAULT TRUE,
-                       account_non_locked BOOLEAN DEFAULT TRUE,
-                       credentials_non_expired BOOLEAN DEFAULT TRUE,
-                       enabled BOOLEAN DEFAULT TRUE,
-                       image_url varchar(255)
-);
+CREATE TABLE `users` (
+                         `id` bigint NOT NULL AUTO_INCREMENT,
+                         `username` varchar(50) NOT NULL,
+                         `email` varchar(100) NOT NULL,
+                         `password` varchar(255) NOT NULL,
+                         `first_name` varchar(50) NOT NULL,
+                         `last_name` varchar(50) NOT NULL,
+                         `created_date` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+                         `last_updated_date` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                         `role` varchar(20) DEFAULT 'USER',
+                         `account_non_expired` tinyint(1) DEFAULT '1',
+                         `account_non_locked` tinyint(1) DEFAULT '1',
+                         `credentials_non_expired` tinyint(1) DEFAULT '1',
+                         `enabled` tinyint(1) DEFAULT '1',
+                         `image_url` varchar(255) DEFAULT NULL,
+                         `is_new_user` tinyint(1) DEFAULT '1',
+                         PRIMARY KEY (`id`),
+                         UNIQUE KEY `username` (`username`),
+                         UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 
 -- 3. Family Profiles Table
 CREATE TABLE family_profiles (

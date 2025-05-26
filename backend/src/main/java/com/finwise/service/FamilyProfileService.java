@@ -1,15 +1,12 @@
 package com.finwise.service;
 
-import com.finwise.dto.ChildDTO;
 import com.finwise.dto.FamilyProfileDTO;
-import com.finwise.entity.Child;
 import com.finwise.entity.FamilyProfile;
 import com.finwise.entity.User;
 import com.finwise.repository.FamilyProfileRepository;
 import com.finwise.repository.UserRepository;
 import jakarta.validation.Valid;
 import org.modelmapper.ModelMapper;
-import org.springframework.data.util.ReflectionUtils;
 import org.springframework.stereotype.Service;
 
 import java.lang.reflect.Field;
@@ -38,6 +35,7 @@ public class FamilyProfileService {
         User user = userRepository.findById(familyProfile.getUserId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
         familyProfile.setUserId(user.getId());
+        user.setNewUser(false);
         FamilyProfile saved = familyProfileRepository.save(modelMapper.map(familyProfile, FamilyProfile.class));
         return modelMapper.map(saved, FamilyProfileDTO.class);
     }
@@ -134,4 +132,8 @@ public class FamilyProfileService {
         familyProfileRepository.save(profile);
     }
 
+    public FamilyProfileDTO getProfileByUserId(Long userId) {
+        FamilyProfile familyProfile = familyProfileRepository.findFamilyProfileByUserId(userId);
+        return modelMapper.map(familyProfile,FamilyProfileDTO.class);
+    }
 }

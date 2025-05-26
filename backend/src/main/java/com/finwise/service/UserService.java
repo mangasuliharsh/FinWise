@@ -50,4 +50,12 @@ public class UserService {
          User savedUser = modelMapper.map(user,User.class);
          return modelMapper.map(userRepository.save(savedUser),UserDTO.class);
     }
+
+    public User findByEmail(String email) {
+        return userRepository.findByEmail(email).orElse(null);
+    }
+
+    public Long findUserIdByEmailOrUsername(String email,String username) {
+        return userRepository.findByEmailAndUsername(email,username);
+    }
 }
