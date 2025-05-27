@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, User, Calendar, GraduationCap, DollarSign, Target, TrendingUp, BookOpen, Edit3, Trash2 } from 'lucide-react';
+import DynamicNavbar from "../DynamicNavbar";
 
 const EducationPlanningDashboard = () => {
     const [children, setChildren] = useState([
@@ -137,8 +138,9 @@ const EducationPlanningDashboard = () => {
     const totalMonthlyContributions = children.reduce((sum, child) => sum + child.monthlyContribution, 0);
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 text-white">
+        <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-950 text-white">
             {/* Header */}
+            <DynamicNavbar />
             <div className="bg-blue-900/50 backdrop-blur-sm border-b border-blue-700/30">
                 <div className="max-w-7xl mx-auto px-6 py-4">
                     <div className="flex items-center justify-between">

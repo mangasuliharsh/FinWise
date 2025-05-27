@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { User, Calendar, DollarSign, Heart, Edit3, Trash2, Target } from 'lucide-react';
+import DynamicNavbar from "../DynamicNavbar";
 
 const blueGradient = 'linear-gradient(135deg, #1a237e 0%, #283593 60%, #1565c0 100%)';
 const colors = {
@@ -58,13 +59,8 @@ export default function MarriagePage() {
     // ... You can add a modal/form here as needed ...
 
     return (
-        <div
-            style={{
-                minHeight: '100vh',
-                background: blueGradient,
-                padding: '32px 0'
-            }}
-        >
+        <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-950 text-white">
+            <DynamicNavbar />
             <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px' }}>
                 {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
