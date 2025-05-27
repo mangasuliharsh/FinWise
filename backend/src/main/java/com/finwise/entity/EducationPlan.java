@@ -26,7 +26,7 @@ public class EducationPlan {
     private BigDecimal estimatedTotalCost;
     private BigDecimal currentSavings = BigDecimal.ZERO;
     private BigDecimal monthlyContribution = BigDecimal.ZERO;
-    private BigDecimal inflationRate = new BigDecimal("6.00");
+    private BigDecimal inflationRate;
     private String notes;
     @CreationTimestamp
     private LocalDateTime createdDate;
@@ -38,7 +38,7 @@ public class EducationPlan {
     private Child child;
 
     public void setInflationAdjustedCost(BigDecimal bigDecimal) {
-        this.inflationRate = bigDecimal;    
+        this.inflationRate = bigDecimal;
     }
 
     public void setFamilyProfile(FamilyProfile familyProfile) {

@@ -76,15 +76,10 @@ public class EducationPlanService {
         EducationPlan existing = educationPlanRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Education plan not found"));
 
+        dto.setId(id);
         modelMapper.map(dto, existing);
-
         // Recalculate inflation adjusted cost
-        existing.setInflationAdjustedCost(calculateInflationAdjustedCost(
-                existing.getEstimatedTotalCost(),
-                existing.getEstimatedStartYear() - java.time.LocalDate.now().getYear(),
-                existing.getInflationRate()
-        ));
-
+        dto.setId(id);
         EducationPlan updated = educationPlanRepository.save(existing);
         return modelMapper.map(updated, EducationPlanDTO.class);
     }

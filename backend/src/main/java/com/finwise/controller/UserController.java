@@ -29,12 +29,9 @@ public class UserController {
         this.userService = userService;
     }
 
-    // Get currently authenticated user (if implemented)
     @GetMapping("/user")
     public ResponseEntity<User> getUser() {
-        return userService.getUser()
-                .map(user -> new ResponseEntity<>(user, HttpStatus.OK))
-                .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
+        return ResponseEntity.ok(userService.getUser());
     }
 
     // Get user by ID
@@ -73,7 +70,8 @@ public class UserController {
                         "firstName", user.getFirstName(),
                         "lastName", user.getLastName(),
                         "isNewUser", user.newUser(),
-                        "image",user.getImage_url()
+                        "image",user.getImage_url(),
+                        "familyProfileId", user.getProfile() != null ? user.getProfile().getId() : null
                 ));
 
                 return ResponseEntity.ok(response);

@@ -65,8 +65,8 @@ public class User {
         this.lastUpdatedDate = LocalDateTime.now();
     }
 
-    @OneToMany(mappedBy = "user")
-    private List<FamilyProfile> profiles;
+    @OneToOne(mappedBy = "user")
+    private FamilyProfile profile;
     @OneToMany(mappedBy = "usernoti")
     private List<Notification> notifications;
 

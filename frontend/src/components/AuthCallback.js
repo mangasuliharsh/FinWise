@@ -15,7 +15,21 @@ const AuthCallback = () => {
                 });
 
                 if (res.data.isAuthenticated) {
-                    // Check the is_new_user flag and redirect accordingly
+                    // Store user data in local storage based on your backend response
+                    localStorage.setItem('user', JSON.stringify(res.data.user));
+                    localStorage.setItem('isAuthenticated', 'true');
+
+                    // Store individual user properties for easy access
+                    localStorage.setItem('userId', res.data.user.id);
+                    localStorage.setItem('userEmail', res.data.user.email);
+                    localStorage.setItem('userFirstName', res.data.user.firstName);
+                    localStorage.setItem('userLastName', res.data.user.lastName);
+                    localStorage.setItem('userImage', res.data.user.image || '');
+                    localStorage.setItem('isNewUser', res.data.user.isNewUser);
+
+                    console.log('User data stored:', res.data.user);
+
+                    // Check the isNewUser flag and redirect accordingly
                     if (res.data.user.isNewUser) {
                         navigate('/family-details');
                     } else {

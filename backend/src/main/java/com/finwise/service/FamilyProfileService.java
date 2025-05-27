@@ -133,7 +133,13 @@ public class FamilyProfileService {
     }
 
     public FamilyProfileDTO getProfileByUserId(Long userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID cannot be null");
+        }
         FamilyProfile familyProfile = familyProfileRepository.findFamilyProfileByUserId(userId);
-        return modelMapper.map(familyProfile,FamilyProfileDTO.class);
+        if (familyProfile == null) {
+            return null; // or throw new ResourceNotFoundException("Family profile not found for user: " + userId);
+        }
+        return modelMapper.map(familyProfile, FamilyProfileDTO.class);
     }
 }

@@ -62,6 +62,7 @@ public class MarriagePlanService {
         MarriagePlan existing = marriagePlanRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Marriage Plan not found"));
 
+        dto.setId(id);
         modelMapper.map(dto, existing);  // Copy all non-null values from DTO to entity
         return modelMapper.map(marriagePlanRepository.save(existing), MarriagePlanDTO.class);
     }

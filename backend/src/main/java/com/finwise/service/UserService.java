@@ -9,8 +9,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
-
 @Service
 public class UserService {
 
@@ -20,10 +18,10 @@ public class UserService {
         this.userRepository = userRepository;
     }
 
-    public Optional<User> getUser() {
+    public User getUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
-            return Optional.empty();
+            return null;
         }
 
         Object principal = authentication.getPrincipal();
@@ -33,12 +31,12 @@ public class UserService {
             if (email == null) {
                 // Log this for debugging
                 System.out.println("OAuth2User does not contain an email attribute.");
-                return Optional.empty();
+                return null;
             }
             return userRepository.findByEmail(email);
         }
 
-        return Optional.empty();
+        return null;
     }
 
 
@@ -52,10 +50,10 @@ public class UserService {
     }
 
     public User findByEmail(String email) {
-        return userRepository.findByEmail(email).orElse(null);
+        return userRepository.findByEmail(email);
     }
 
-    public Long findUserIdByEmailOrUsername(String email,String username) {
-        return userRepository.findByEmailAndUsername(email,username);
+    public User findUserIdByEmailOrUsername(String email,String username) {
+        return userRepository.findByEmailOrUsername(email,username);
     }
 }
