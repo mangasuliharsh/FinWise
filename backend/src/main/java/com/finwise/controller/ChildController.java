@@ -1,9 +1,14 @@
 package com.finwise.controller;
 
 import com.finwise.dto.ChildDTO;
+import com.finwise.dto.FamilyProfileDTO;
 import com.finwise.dto.MarriagePlanDTO;
+import com.finwise.entity.FamilyProfile;
+import com.finwise.entity.User;
 import com.finwise.service.ChildService;
+import com.finwise.service.FamilyProfileService;
 import com.finwise.service.MarriagePlanService;
+import com.finwise.util.Util;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,9 +22,11 @@ import java.util.Map;
 public class ChildController {
 
     private final ChildService childService;
+    private final Util util;
+    private final FamilyProfileService familyProfileService;
 
     @PostMapping
-    public ResponseEntity<ChildDTO> create(@RequestBody ChildDTO dto) {
+    public ResponseEntity<?> create(@RequestBody ChildDTO dto) {
         return ResponseEntity.ok(childService.createChild(dto));
     }
 
