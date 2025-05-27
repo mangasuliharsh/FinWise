@@ -7,6 +7,8 @@ import DynamicNavbar from './components/DynamicNavbar';
 import LandingPage from './components/landing';
 import EducationPage from './components/Education/EducationPage';
 import MarriagePage from './components/Marriage/MarriagePage';
+import InvestmentPage from './components/Investment/InvestmentPage';
+
 
 
 
@@ -20,6 +22,7 @@ function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/Education" element={<EducationPage />} />
                 <Route path="/marriage" element={<MarriagePage />} />
+                <Route path="/investment" element={<InvestmentPage />} />
             </Routes>
         </Router>
     );

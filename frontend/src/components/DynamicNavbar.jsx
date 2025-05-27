@@ -224,7 +224,7 @@ const DynamicNavbar = () => {
                     <span>Marriage</span>
                 </button>
                 <button
-                    onClick={() => navigate('/investments')}
+                    onClick={() => navigate('/investment')}
                     className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
                 >
                     <PieChart size={18} />
