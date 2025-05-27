@@ -5,6 +5,10 @@ import FamilyDetails from './components/FamilyProfile/FamilyDetails';
 import AuthCallback from './components/AuthCallback';
 import DynamicNavbar from './components/DynamicNavbar';
 import LandingPage from './components/landing';
+import EducationPage from './components/Education/EducationPage';
+import MarriagePage from './components/Marriage/MarriagePage';
+
+
 
 function App() {
     return (
@@ -14,7 +18,8 @@ function App() {
                 <Route path="/auth/callback" element={<AuthCallback />} />
                 <Route path="/family-details" element={<FamilyDetails />} />
                 <Route path="/dashboard" element={<Dashboard />} />
-
+                <Route path="/Education" element={<EducationPage />} />
+                <Route path="/marriage" element={<MarriagePage />} />
             </Routes>
         </Router>
     );
