@@ -16,6 +16,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
+import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
+import org.springframework.security.web.context.DelegatingSecurityContextRepository;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,10 +33,16 @@ public class UserController {
 
     private final UserService userService;
     private final AuthenticationManager authenticationManager;
+    private final SecurityContextRepository securityContextRepository;
 
     public UserController(UserService userService, AuthenticationManager authenticationManager) {
         this.userService = userService;
         this.authenticationManager = authenticationManager;
+        // Initialize SecurityContextRepository for Spring Security 6
+        this.securityContextRepository = new DelegatingSecurityContextRepository(
+                new RequestAttributeSecurityContextRepository(),
+                new HttpSessionSecurityContextRepository()
+        );
     }
 
     @GetMapping("/auth/user")
@@ -60,9 +70,11 @@ public class UserController {
 
             if (email != null && !email.equals("anonymousUser")) {
                 Optional<User> optionalUser = userService.findByEmail(email);
-                User user = optionalUser.get();
 
-                if (user != null) {
+                // FIX: Check if user exists before calling get()
+                if (optionalUser.isPresent()) {
+                    User user = optionalUser.get();
+
                     Map<String, Object> response = new HashMap<>();
                     response.put("isAuthenticated", true);
 
@@ -95,9 +107,6 @@ public class UserController {
         return ResponseEntity.ok(Map.of("isAuthenticated", false));
     }
 
-
-
-
     @PostMapping("/auth/logout")
     public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
         try {
@@ -121,30 +130,32 @@ public class UserController {
     @PostMapping("/auth/register")
     public ResponseEntity<Map<String, Object>> registerUser(
             @Valid @RequestBody UserDTO registrationDto,
-            BindingResult bindingResult) {
+            BindingResult bindingResult,
+            HttpServletRequest request,
+            HttpServletResponse response) {
 
-        Map<String, Object> response = new HashMap<>();
+        Map<String, Object> responseMap = new HashMap<>();
 
         // Check for validation errors
         if (bindingResult.hasErrors()) {
-            response.put("success", false);
-            response.put("message", "Validation failed");
-            response.put("errors", bindingResult.getAllErrors());
-            return ResponseEntity.badRequest().body(response);
+            responseMap.put("success", false);
+            responseMap.put("message", "Validation failed");
+            responseMap.put("errors", bindingResult.getAllErrors());
+            return ResponseEntity.badRequest().body(responseMap);
         }
 
         try {
             // Check if user already exists
             if (userService.existsByEmail(registrationDto.getEmail())) {
-                response.put("success", false);
-                response.put("message", "An account with this email already exists");
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+                responseMap.put("success", false);
+                responseMap.put("message", "An account with this email already exists");
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(responseMap);
             }
 
             if (userService.existsByUsername(registrationDto.getUsername())) {
-                response.put("success", false);
-                response.put("message", "Username is already taken");
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+                responseMap.put("success", false);
+                responseMap.put("message", "Username is already taken");
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(responseMap);
             }
 
             // Register the user
@@ -157,12 +168,21 @@ public class UserController {
                             registrationDto.getPassword()
                     )
             );
+
+            // Set authentication in security context
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
+            // CRITICAL: Save the security context properly for Spring Security 6
+            securityContextRepository.saveContext(
+                    SecurityContextHolder.getContext(),
+                    request,
+                    response
+            );
+
             // Prepare success response
-            response.put("success", true);
-            response.put("message", "Registration successful");
-            response.put("user", Map.of(
+            responseMap.put("success", true);
+            responseMap.put("message", "Registration successful");
+            responseMap.put("user", Map.of(
                     "id", registeredUser.getId(),
                     "username", registeredUser.getUsername(),
                     "email", registeredUser.getEmail(),
@@ -171,26 +191,27 @@ public class UserController {
                     "isNewUser", registeredUser.isNewUser()
             ));
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+            return ResponseEntity.status(HttpStatus.CREATED).body(responseMap);
 
         } catch (UserAlreadyExistsException e) {
-            response.put("success", false);
-            response.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+            responseMap.put("success", false);
+            responseMap.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(responseMap);
 
         } catch (Exception e) {
-            response.put("success", false);
-            response.put("message", "Registration failed: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            responseMap.put("success", false);
+            responseMap.put("message", "Registration failed: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(responseMap);
         }
     }
 
     @PostMapping("/auth/login")
     public ResponseEntity<Map<String, Object>> loginUser(
             @RequestBody Map<String, String> loginRequest,
-            HttpServletRequest request) {
+            HttpServletRequest request,
+            HttpServletResponse response) {
 
-        Map<String, Object> response = new HashMap<>();
+        Map<String, Object> responseMap = new HashMap<>();
 
         try {
             String email = loginRequest.get("email");
@@ -201,34 +222,42 @@ public class UserController {
                     new UsernamePasswordAuthenticationToken(email, password)
             );
 
-            // IMPORTANT: Set authentication in security context
+            // Set authentication in security context
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            // Create and save session
-            HttpSession session = request.getSession(true);
-            session.setAttribute("SPRING_SECURITY_CONTEXT", SecurityContextHolder.getContext());
+            // CRITICAL: Save the security context properly for Spring Security 6
+            securityContextRepository.saveContext(
+                    SecurityContextHolder.getContext(),
+                    request,
+                    response
+            );
 
-            // Get user details
+            // Get user details with proper Optional handling
             Optional<User> optionalUser = userService.findByEmail(email);
-            User user = optionalUser.get();
-            response.put("success", true);
-            response.put("message", "Login successful");
-            response.put("user", Map.of(
-                    "id", user.getId(),
-                    "username", user.getUsername(),
-                    "email", user.getEmail(),
-                    "firstName", user.getFirstName(),
-                    "lastName", user.getLastName(),
-                    "isNewUser", user.isNewUser()
-            ));
+            if (optionalUser.isPresent()) {
+                User user = optionalUser.get();
+                responseMap.put("success", true);
+                responseMap.put("message", "Login successful");
+                responseMap.put("user", Map.of(
+                        "id", user.getId(),
+                        "username", user.getUsername(),
+                        "email", user.getEmail(),
+                        "firstName", user.getFirstName(),
+                        "lastName", user.getLastName(),
+                        "isNewUser", user.isNewUser()
+                ));
+            } else {
+                responseMap.put("success", false);
+                responseMap.put("message", "User not found after authentication");
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(responseMap);
+            }
 
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(responseMap);
 
         } catch (Exception e) {
-            response.put("success", false);
-            response.put("message", "Invalid email or password");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+            responseMap.put("success", false);
+            responseMap.put("message", "Invalid email or password");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(responseMap);
         }
     }
-
 }

@@ -5,6 +5,7 @@ import com.finwise.entity.FamilyProfile;
 import com.finwise.entity.User;
 import com.finwise.repository.FamilyProfileRepository;
 import com.finwise.repository.UserRepository;
+import com.finwise.util.Util;
 import jakarta.validation.Valid;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,7 @@ import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -22,13 +24,16 @@ public class FamilyProfileService {
     private final FamilyProfileRepository familyProfileRepository;
     private final UserRepository userRepository;
     private final ModelMapper modelMapper;
+    private final Util util;
 
     public FamilyProfileService(FamilyProfileRepository familyProfileRepository,
                                 UserRepository userRepository,
-                                ModelMapper modelMapper) {
+                                ModelMapper modelMapper,
+                                Util util) {
         this.familyProfileRepository = familyProfileRepository;
         this.userRepository = userRepository;
         this.modelMapper = modelMapper;
+        this.util = util;
     }
 
     public FamilyProfileDTO createFamilyProfile(@Valid FamilyProfileDTO familyProfile) {
@@ -141,5 +146,15 @@ public class FamilyProfileService {
             return null; // or throw new ResourceNotFoundException("Family profile not found for user: " + userId);
         }
         return modelMapper.map(familyProfile, FamilyProfileDTO.class);
+    }
+
+    public FamilyProfile getLoggedInUserFamilyProfile() {
+        Optional<User> optionalUser = util.getCurrentAuthenticatedUser();
+        if (optionalUser.isPresent()) {
+            User user = optionalUser.get();
+            return familyProfileRepository.findByUser(user);
+        }
+        else
+            throw new NoSuchElementException("No Such Element");
     }
 }

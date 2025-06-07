@@ -6,6 +6,7 @@ import com.finwise.entity.User;
 import com.finwise.service.FamilyProfileService;
 import com.finwise.util.Util;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -38,10 +39,16 @@ public class FamilyProfileController {
     }
 
     @PostMapping
-    public ResponseEntity<FamilyProfileDTO> createProfile(@Valid @RequestBody FamilyProfileDTO dto) {
-        Optional<User> user = util.getCurrentAuthenticatedUser();
-        dto.setUserId(user.get().getId());
-        return ResponseEntity.status(201).body(familyProfileService.createFamilyProfile(dto));
+    public ResponseEntity<?> createProfile(@Valid @RequestBody FamilyProfileDTO dto) {
+        Optional<User> userOptional = util.getCurrentAuthenticatedUser();
+        if (userOptional.isEmpty()) {
+            // util.debugAuthentication(); // Uncomment for debugging
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
+        }
+        User currentUser = userOptional.get();
+        dto.setUserId(currentUser.getId());
+        FamilyProfileDTO createdProfile = familyProfileService.createFamilyProfile(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdProfile);
     }
 
     @PutMapping("/{id}")
@@ -70,9 +77,19 @@ public class FamilyProfileController {
     }
 
     @GetMapping
-    public ResponseEntity<FamilyProfileDTO> getProfileByUserId(){
-        Optional<User> user = util.getCurrentAuthenticatedUser();
-        return ResponseEntity.ok(familyProfileService.getProfileByUserId(user.get().getId()));
+    public ResponseEntity<?> getProfileByUserId(){
+        Optional<User> userOptional = util.getCurrentAuthenticatedUser();
+        if (userOptional.isEmpty()) {
+            // util.debugAuthentication(); // Uncomment for debugging
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
+        }
+        User currentUser = userOptional.get();
+        FamilyProfileDTO profile = familyProfileService.getProfileByUserId(currentUser.getId());
+        // Consider if profile itself can be null or if service throws exception
+        if (profile == null) { 
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(profile);
     }
 
 }

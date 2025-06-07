@@ -11,4 +11,8 @@ import java.util.List;
 @Repository
 public interface MarriagePlanRepository extends JpaRepository<MarriagePlan,Long> {
     List<MarriagePlan> findByFamilyProfileId(Long familyProfileId);
+
+    List<MarriagePlan> findByFamilyProfile(FamilyProfile familyProfile);
+
+    List<MarriagePlan> findByFamilyProfile_Id(Long familyProfileId);
 }

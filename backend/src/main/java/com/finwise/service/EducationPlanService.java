@@ -131,4 +131,8 @@ public class EducationPlanService {
         double futureValue = currentCost.doubleValue() * Math.pow(1 + rate, years);
         return BigDecimal.valueOf(futureValue).setScale(2, BigDecimal.ROUND_HALF_UP);
     }
+
+    public List<EducationPlan> findByFamilyProfile(FamilyProfile familyProfile) {
+        return educationPlanRepository.findByChild_FamilyProfile(familyProfile);
+    }
 }

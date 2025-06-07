@@ -25,7 +25,8 @@ const AuthCallback = () => {
                     localStorage.setItem('userFirstName', res.data.user.firstName);
                     localStorage.setItem('userLastName', res.data.user.lastName);
                     localStorage.setItem('userImage', res.data.user.image || '');
-                    localStorage.setItem('isNewUser', res.data.user.isNewUser);
+                    localStorage.setItem('isNewUser', res.data.user.isNewUser)
+                    localStorage.setItem('familyProfileId',res.data.user.familyProfileId)
 
                     console.log('User data stored:', res.data.user);
 
