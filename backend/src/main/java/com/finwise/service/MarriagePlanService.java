@@ -81,4 +81,8 @@ public class MarriagePlanService {
 
         return modelMapper.map(plan, MarriagePlanDTO.class);
     }
+
+    public List<MarriagePlan> findByFamilyProfile(FamilyProfile familyProfile) {
+        return marriagePlanRepository.findByFamilyProfile(familyProfile);
+    }
 }

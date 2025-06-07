@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { User, Calendar, DollarSign, Heart, Edit3, Trash2, Target, Plus, X, Save } from 'lucide-react';
 import DynamicNavbar from "../DynamicNavbar";
+import axios from "axios";
 
 // API Configuration
 const API_BASE_URL = 'http://localhost:8080';
 
+
+
 // API service functions
 const marriagePlanAPI = {
+
+
     async getAllPlans(familyProfileId) {
         const response = await fetch(`${API_BASE_URL}/api/marriage-plans/family/${familyProfileId}`);
         if (!response.ok) throw new Error('Failed to fetch plans');
@@ -51,90 +56,6 @@ const marriagePlanAPI = {
     }
 };
 
-function getProgress(plan) {
-    const currentYear = new Date().getFullYear();
-    const targetYear = parseInt(plan.estimatedYear) || currentYear + 1;
-    const years = Math.max(0, targetYear - currentYear);
-
-    const currentSavings = parseFloat(plan.currentSavings) || 0;
-    const monthlyContrib = parseFloat(plan.monthlyContribution) || 0;
-    const inflationRate = parseFloat(plan.inflationRate) || 6;
-    const estimatedTotal = parseFloat(plan.estimatedTotalCost) || 0;
-
-    // If no estimated cost, return 0
-    if (estimatedTotal <= 0) return 0;
-
-    // If target year is current year or past, calculate based on current savings only
-    if (years <= 0) {
-        return Math.min(100, (currentSavings / estimatedTotal) * 100);
-    }
-
-    // Calculate future value of current savings with compound interest
-    const futureValueCurrentSavings = currentSavings * Math.pow(1 + inflationRate / 100, years);
-
-    // Calculate future value of monthly contributions (annuity formula)
-    let futureValueMonthlyContributions = 0;
-    if (monthlyContrib > 0 && inflationRate > 0) {
-        const monthlyRate = inflationRate / 100 / 12;
-        const totalMonths = years * 12;
-        futureValueMonthlyContributions = monthlyContrib *
-            ((Math.pow(1 + monthlyRate, totalMonths) - 1) / monthlyRate);
-    } else if (monthlyContrib > 0) {
-        // If no inflation, simple multiplication
-        futureValueMonthlyContributions = monthlyContrib * years * 12;
-    }
-
-    const totalFutureValue = futureValueCurrentSavings + futureValueMonthlyContributions;
-
-    // Calculate inflated cost
-    const inflatedCost = estimatedTotal * Math.pow(1 + inflationRate / 100, years);
-
-    // Return progress percentage, capped at 100%
-    return Math.min(100, (totalFutureValue / inflatedCost) * 100);
-}
-
-function getShortfall(plan) {
-    const currentYear = new Date().getFullYear();
-    const targetYear = parseInt(plan.estimatedYear) || currentYear + 1;
-    const years = Math.max(0, targetYear - currentYear);
-
-    const currentSavings = parseFloat(plan.currentSavings) || 0;
-    const monthlyContrib = parseFloat(plan.monthlyContribution) || 0;
-    const inflationRate = parseFloat(plan.inflationRate) || 6;
-    const estimatedTotal = parseFloat(plan.estimatedTotalCost) || 0;
-
-    // If no estimated cost, return 0
-    if (estimatedTotal <= 0) return 0;
-
-    // If target year is current year or past, calculate based on current savings only
-    if (years <= 0) {
-        return Math.max(0, estimatedTotal - currentSavings);
-    }
-
-    // Calculate future value of current savings with compound interest
-    const futureValueCurrentSavings = currentSavings * Math.pow(1 + inflationRate / 100, years);
-
-    // Calculate future value of monthly contributions (annuity formula)
-    let futureValueMonthlyContributions = 0;
-    if (monthlyContrib > 0 && inflationRate > 0) {
-        const monthlyRate = inflationRate / 100 / 12;
-        const totalMonths = years * 12;
-        futureValueMonthlyContributions = monthlyContrib *
-            ((Math.pow(1 + monthlyRate, totalMonths) - 1) / monthlyRate);
-    } else if (monthlyContrib > 0) {
-        // If no inflation, simple multiplication
-        futureValueMonthlyContributions = monthlyContrib * years * 12;
-    }
-
-    const totalFutureValue = futureValueCurrentSavings + futureValueMonthlyContributions;
-
-    // Calculate inflated cost
-    const inflatedCost = estimatedTotal * Math.pow(1 + inflationRate / 100, years);
-
-    // Return shortfall (negative means surplus)
-    return Math.max(0, inflatedCost - totalFutureValue);
-}
-
 // Form Modal Component
 const MarriagePlanModal = ({ isOpen, onClose, onSave, plan = null, familyProfileId }) => {
     const [formData, setFormData] = useState({
@@ -144,7 +65,6 @@ const MarriagePlanModal = ({ isOpen, onClose, onSave, plan = null, familyProfile
         estimatedYear: new Date().getFullYear() + 1,
         estimatedTotalCost: '',
         currentSavings: '0',
-        monthlyContribution: '0',
         inflationRate: '6.00',
         notes: '',
         familyProfileId: familyProfileId
@@ -161,10 +81,22 @@ const MarriagePlanModal = ({ isOpen, onClose, onSave, plan = null, familyProfile
                 estimatedYear: plan.estimatedYear || new Date().getFullYear() + 1,
                 estimatedTotalCost: plan.estimatedTotalCost || '',
                 currentSavings: plan.currentSavings || '0',
-                monthlyContribution: plan.monthlyContribution || '0',
                 inflationRate: plan.inflationRate || '6.00',
                 notes: plan.notes || '',
                 familyProfileId: plan.familyProfileId || familyProfileId
+            });
+        } else {
+            // Reset form for new plan with current familyProfileId
+            setFormData({
+                planName: '',
+                forName: '',
+                relationship: '',
+                estimatedYear: new Date().getFullYear() + 1,
+                estimatedTotalCost: '',
+                currentSavings: '0',
+                inflationRate: '6.00',
+                notes: '',
+                familyProfileId: familyProfileId
             });
         }
     }, [plan, familyProfileId]);
@@ -310,20 +242,6 @@ const MarriagePlanModal = ({ isOpen, onClose, onSave, plan = null, familyProfile
 
                         <div>
                             <label className="block text-gray-300 text-sm font-medium mb-2">
-                                Monthly Contribution (₹)
-                            </label>
-                            <input
-                                type="number"
-                                value={formData.monthlyContribution}
-                                onChange={(e) => setFormData({...formData, monthlyContribution: e.target.value})}
-                                min="0"
-                                step="0.01"
-                                className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-gray-300 text-sm font-medium mb-2">
                                 Inflation Rate (%)
                             </label>
                             <input
@@ -388,18 +306,67 @@ export default function MarriagePage() {
     const [error, setError] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPlan, setEditingPlan] = useState(null);
+    const [familyProfileId, setFamilyProfileId] = useState(null);
 
-    // This should come from your auth context or props
-    const familyProfileId = 1; // Replace with actual family profile ID
-
-    // Load plans on component mount
+    // Get familyProfileId from localStorage
     useEffect(() => {
-        loadPlans();
+        const storedFamilyProfileId = localStorage.getItem('familyProfileId');
+        console.log('Retrieved familyProfileId from localStorage:', storedFamilyProfileId);
+
+        if (storedFamilyProfileId) {
+            setFamilyProfileId(parseInt(storedFamilyProfileId));
+        } else {
+            setError('Family profile not found. Please complete your profile first.');
+            setLoading(false);
+        }
     }, []);
 
+    // Add this useEffect after your existing ones (around line 570)
+    useEffect(() => {
+        const generatePredictions = async () => {
+            const familyProfileId = localStorage.getItem('familyProfileId');
+
+            if (!familyProfileId) {
+                console.error('Family profile ID not found in localStorage');
+                return;
+            }
+
+            // Only run if we have marriage plans
+            if (!marriagePlans || marriagePlans.length === 0) {
+                return;
+            }
+
+            try {
+                const response = await axios.get(`http://localhost:8080/api/predictions/generate/${familyProfileId}`, {
+                    withCredentials: true
+                });
+                console.log('Predictions generated successfully:', response.data);
+            } catch (error) {
+                console.error('Error generating predictions:', error);
+            }
+        };
+
+        generatePredictions();
+    }, [marriagePlans]); // Use marriagePlans instead of familyData.educationPlans
+
+
+    // Load plans when familyProfileId is available
+    useEffect(() => {
+        if (familyProfileId) {
+            loadPlans();
+        }
+    }, [familyProfileId]);
+
     const loadPlans = async () => {
+        if (!familyProfileId) {
+            setError('Family profile ID not available');
+            setLoading(false);
+            return;
+        }
+
         try {
             setLoading(true);
+            console.log('Loading plans for familyProfileId:', familyProfileId);
             const plans = await marriagePlanAPI.getAllPlans(familyProfileId);
             setMarriagePlans(plans);
             setError(null);
@@ -412,23 +379,34 @@ export default function MarriagePage() {
     };
 
     const handleCreatePlan = async (planData) => {
+        if (!familyProfileId) {
+            setError('Family profile ID not available');
+            return;
+        }
+
         try {
+            console.log('Creating plan for familyProfileId:', familyProfileId);
+            console.log('Plan data:', planData);
             const newPlan = await marriagePlanAPI.createPlan(familyProfileId, planData);
             setMarriagePlans(prev => [...prev, newPlan]);
         } catch (err) {
             setError('Failed to create plan');
+            console.error('Error creating plan:', err);
             throw err;
         }
     };
 
     const handleUpdatePlan = async (planData) => {
         try {
+            console.log('Updating plan:', editingPlan.id);
+            console.log('Plan data:', planData);
             const updatedPlan = await marriagePlanAPI.updatePlan(editingPlan.id, planData);
             setMarriagePlans(prev => prev.map(plan =>
                 plan.id === editingPlan.id ? updatedPlan : plan
             ));
         } catch (err) {
             setError('Failed to update plan');
+            console.error('Error updating plan:', err);
             throw err;
         }
     };
@@ -439,6 +417,7 @@ export default function MarriagePage() {
         }
 
         try {
+            console.log('Deleting plan:', planId);
             await marriagePlanAPI.deletePlan(planId);
             setMarriagePlans(prev => prev.filter(plan => plan.id !== planId));
         } catch (err) {
@@ -448,6 +427,10 @@ export default function MarriagePage() {
     };
 
     const openCreateModal = () => {
+        if (!familyProfileId) {
+            setError('Family profile ID not available');
+            return;
+        }
         setEditingPlan(null);
         setIsModalOpen(true);
     };
@@ -462,13 +445,8 @@ export default function MarriagePage() {
         setEditingPlan(null);
     };
 
-    // Summary calculations
-    const totalPlans = marriagePlans.length;
-    const totalEstimated = marriagePlans.reduce((sum, plan) => sum + parseFloat(plan.estimatedTotalCost || 0), 0);
-    const totalSavings = marriagePlans.reduce((sum, plan) => sum + parseFloat(plan.currentSavings || 0), 0);
-    const totalMonthlyContrib = marriagePlans.reduce((sum, plan) => sum + parseFloat(plan.monthlyContribution || 0), 0);
-
-    if (loading) {
+    // Show loading if familyProfileId is not yet loaded
+    if (loading || familyProfileId === null) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-950 text-white flex items-center justify-center">
                 <div className="text-center">
@@ -478,6 +456,12 @@ export default function MarriagePage() {
             </div>
         );
     }
+
+    // Summary calculations
+    const totalPlans = marriagePlans.length;
+    const totalEstimated = marriagePlans.reduce((sum, plan) => sum + parseFloat(plan.estimatedTotalCost || 0), 0);
+    const totalSavings = marriagePlans.reduce((sum, plan) => sum + parseFloat(plan.currentSavings || 0), 0);
+    const totalMonthlyContrib = marriagePlans.reduce((sum, plan) => sum + parseFloat(plan.monthlyContribution || 0), 0);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-950 text-white">
@@ -495,7 +479,9 @@ export default function MarriagePage() {
                         <p className="text-gray-300 text-lg">
                             Plan and track your family's marriage expenses
                         </p>
-                        {/* Debug info - remove in production */}
+                        <p className="text-gray-400 text-sm">
+                            Family Profile ID: {familyProfileId}
+                        </p>
                     </div>
                     <button
                         onClick={openCreateModal}
@@ -698,4 +684,73 @@ export default function MarriagePage() {
             />
         </div>
     );
+}
+
+// Helper functions remain the same
+function getProgress(plan) {
+    const currentYear = new Date().getFullYear();
+    const targetYear = parseInt(plan.estimatedYear) || currentYear + 1;
+    const years = Math.max(0, targetYear - currentYear);
+
+    const currentSavings = parseFloat(plan.currentSavings) || 0;
+    const monthlyContrib = parseFloat(plan.monthlyContribution) || 0;
+    const inflationRate = parseFloat(plan.inflationRate) || 6;
+    const estimatedTotal = parseFloat(plan.estimatedTotalCost) || 0;
+
+    if (estimatedTotal <= 0) return 0;
+
+    if (years <= 0) {
+        return Math.min(100, (currentSavings / estimatedTotal) * 100);
+    }
+
+    const futureValueCurrentSavings = currentSavings * Math.pow(1 + inflationRate / 100, years);
+
+    let futureValueMonthlyContributions = 0;
+    if (monthlyContrib > 0 && inflationRate > 0) {
+        const monthlyRate = inflationRate / 100 / 12;
+        const totalMonths = years * 12;
+        futureValueMonthlyContributions = monthlyContrib *
+            ((Math.pow(1 + monthlyRate, totalMonths) - 1) / monthlyRate);
+    } else if (monthlyContrib > 0) {
+        futureValueMonthlyContributions = monthlyContrib * years * 12;
+    }
+
+    const totalFutureValue = futureValueCurrentSavings + futureValueMonthlyContributions;
+    const inflatedCost = estimatedTotal * Math.pow(1 + inflationRate / 100, years);
+
+    return Math.min(100, (totalFutureValue / inflatedCost) * 100);
+}
+
+function getShortfall(plan) {
+    const currentYear = new Date().getFullYear();
+    const targetYear = parseInt(plan.estimatedYear) || currentYear + 1;
+    const years = Math.max(0, targetYear - currentYear);
+
+    const currentSavings = parseFloat(plan.currentSavings) || 0;
+    const monthlyContrib = parseFloat(plan.monthlyContribution) || 0;
+    const inflationRate = parseFloat(plan.inflationRate) || 6;
+    const estimatedTotal = parseFloat(plan.estimatedTotalCost) || 0;
+
+    if (estimatedTotal <= 0) return 0;
+
+    if (years <= 0) {
+        return Math.max(0, estimatedTotal - currentSavings);
+    }
+
+    const futureValueCurrentSavings = currentSavings * Math.pow(1 + inflationRate / 100, years);
+
+    let futureValueMonthlyContributions = 0;
+    if (monthlyContrib > 0 && inflationRate > 0) {
+        const monthlyRate = inflationRate / 100 / 12;
+        const totalMonths = years * 12;
+        futureValueMonthlyContributions = monthlyContrib *
+            ((Math.pow(1 + monthlyRate, totalMonths) - 1) / monthlyRate);
+    } else if (monthlyContrib > 0) {
+        futureValueMonthlyContributions = monthlyContrib * years * 12;
+    }
+
+    const totalFutureValue = futureValueCurrentSavings + futureValueMonthlyContributions;
+    const inflatedCost = estimatedTotal * Math.pow(1 + inflationRate / 100, years);
+
+    return Math.max(0, inflatedCost - totalFutureValue);
 }

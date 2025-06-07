@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { GraduationCap, Calendar, DollarSign, BookOpen, Edit3, Trash2, Target, Plus, X, User, Baby } from 'lucide-react';
 import DynamicNavbar from "../DynamicNavbar";
-import { userService } from '../util/userService';
+import axios from "axios";
 
 // API Base URL Configuration
-const API_BASE_URL = 'http://localhost:8080';
+const API_BASE_URL = 'http://localhost:8080'
+
+
 
 // Complete API service with localhost:8080 endpoints
 const familyEducationAPI = {
@@ -184,7 +186,10 @@ const familyEducationAPI = {
             throw error;
         }
     }
+
 };
+
+
 
 // Helper function to calculate family education summary
 const calculateFamilySummary = (children, educationPlans) => {
@@ -202,16 +207,36 @@ const calculateFamilySummary = (children, educationPlans) => {
 };
 
 // Family Child Form Component
-const FamilyChildForm = ({ child, onSave, onCancel, familyId }) => {
+const FamilyChildForm = ({ child, onSave, onCancel, familyProfileId }) => {
     const [formData, setFormData] = useState({
         name: child?.name || '',
         dateOfBirth: child?.dateOfBirth || '',
         currentEducationLevel: child?.currentEducationLevel || '',
-        familyProfileId: familyId
+        familyProfileId: familyProfileId
     });
 
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (child) {
+            setFormData({
+                name: child.name || '',
+                dateOfBirth: child.dateOfBirth || '',
+                currentEducationLevel: child.currentEducationLevel || '',
+                familyProfileId: child.familyProfileId || familyProfileId
+            });
+        } else {
+            setFormData({
+                name: '',
+                dateOfBirth: '',
+                currentEducationLevel: '',
+                familyProfileId: familyProfileId
+            });
+        }
+    }, [child, familyProfileId]);
+
+
 
     const validateForm = () => {
         const newErrors = {};
@@ -245,7 +270,7 @@ const FamilyChildForm = ({ child, onSave, onCancel, familyId }) => {
             if (child?.id) {
                 await familyEducationAPI.updateFamilyChild(child.id, formData);
             } else {
-                await familyEducationAPI.addChildToFamily(familyId, formData);
+                await familyEducationAPI.addChildToFamily(familyProfileId, formData);
             }
             onSave();
         } catch (error) {
@@ -344,8 +369,8 @@ const FamilyChildForm = ({ child, onSave, onCancel, familyId }) => {
     );
 };
 
-// Family Education Plan Form Component - FIXED VERSION
-const FamilyEducationPlanForm = ({ plan, onSave, onCancel, familyId, children }) => {
+// Family Education Plan Form Component
+const FamilyEducationPlanForm = ({ plan, onSave, onCancel, familyProfileId, children }) => {
     const [formData, setFormData] = useState({
         planName: plan?.planName || '',
         educationLevel: plan?.educationLevel || '',
@@ -354,14 +379,40 @@ const FamilyEducationPlanForm = ({ plan, onSave, onCancel, familyId, children })
         estimatedEndYear: plan?.estimatedEndYear || new Date().getFullYear() + 5,
         estimatedTotalCost: plan?.estimatedTotalCost || '',
         currentSavings: plan?.currentSavings || '',
-        monthlyContribution: plan?.monthlyContribution || '',
-        // REMOVED: inflationRate field completely
         notes: plan?.notes || '',
         childId: plan?.childId || (children[0]?.id || '')
     });
 
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (plan) {
+            setFormData({
+                planName: plan.planName || '',
+                educationLevel: plan.educationLevel || '',
+                institutionType: plan.institutionType || '',
+                estimatedStartYear: plan.estimatedStartYear || new Date().getFullYear() + 1,
+                estimatedEndYear: plan.estimatedEndYear || new Date().getFullYear() + 5,
+                estimatedTotalCost: plan.estimatedTotalCost || '',
+                currentSavings: plan.currentSavings || '',
+                notes: plan.notes || '',
+                childId: plan.childId || (children[0]?.id || '')
+            });
+        } else {
+            setFormData({
+                planName: '',
+                educationLevel: '',
+                institutionType: '',
+                estimatedStartYear: new Date().getFullYear() + 1,
+                estimatedEndYear: new Date().getFullYear() + 5,
+                estimatedTotalCost: '',
+                currentSavings: '',
+                notes: '',
+                childId: children[0]?.id || ''
+            });
+        }
+    }, [plan, children]);
 
     const validateForm = () => {
         const newErrors = {};
@@ -387,11 +438,6 @@ const FamilyEducationPlanForm = ({ plan, onSave, onCancel, familyId, children })
         if (parseFloat(formData.currentSavings) < 0) {
             newErrors.currentSavings = 'Current savings cannot be negative';
         }
-        if (parseFloat(formData.monthlyContribution) < 0) {
-            newErrors.monthlyContribution = 'Monthly contribution cannot be negative';
-        }
-
-        // REMOVED: All inflation rate validation
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -416,7 +462,7 @@ const FamilyEducationPlanForm = ({ plan, onSave, onCancel, familyId, children })
             if (plan?.id) {
                 await familyEducationAPI.updateEducationPlan(plan.id, planData);
             } else {
-                await familyEducationAPI.createEducationPlan(familyId, planData);
+                await familyEducationAPI.createEducationPlan(familyProfileId, planData);
             }
             onSave();
         } catch (error) {
@@ -562,21 +608,6 @@ const FamilyEducationPlanForm = ({ plan, onSave, onCancel, familyId, children })
                             />
                             {errors.currentSavings && <p className="text-red-400 text-sm mt-1">{errors.currentSavings}</p>}
                         </div>
-
-                        <div>
-                            <label className="block text-gray-300 text-sm font-medium mb-2">Monthly Contribution (₹)</label>
-                            <input
-                                type="number"
-                                value={formData.monthlyContribution}
-                                onChange={(e) => setFormData({...formData, monthlyContribution: e.target.value})}
-                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"
-                                min="0"
-                                step="500"
-                            />
-                            {errors.monthlyContribution && <p className="text-red-400 text-sm mt-1">{errors.monthlyContribution}</p>}
-                        </div>
-
-                        {/* REMOVED: Inflation Rate Input Field Completely */}
                     </div>
 
                     <div>
@@ -622,75 +653,95 @@ export default function FamilyEducationPage() {
         summary: {}
     });
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [showChildForm, setShowChildForm] = useState(false);
     const [showPlanForm, setShowPlanForm] = useState(false);
     const [editingChild, setEditingChild] = useState(null);
     const [editingPlan, setEditingPlan] = useState(null);
+    const [familyProfileId, setFamilyProfileId] = useState(null);
 
-    // Get family ID from localStorage user data
-    const [familyId] = useState(() => {
-        // Check if user is authenticated
-        if (!userService.isAuthenticated()) {
-            console.warn('User not authenticated');
-            return null;
+    // Get familyProfileId from localStorage - UPDATED TO MATCH MARRIAGE PAGE
+    useEffect(() => {
+        const storedFamilyProfileId = localStorage.getItem('familyProfileId');
+        console.log('Retrieved familyProfileId from localStorage:', storedFamilyProfileId);
+
+        if (storedFamilyProfileId) {
+            setFamilyProfileId(parseInt(storedFamilyProfileId));
+        } else {
+            setError('Family profile not found. Please complete your profile first.');
+            setLoading(false);
         }
+    }, []);
 
-        // Get user data from localStorage
-        const user = userService.getUser();
-        console.log('Current user from localStorage:', user);
-
-        // Try to get familyProfileId from user data
-        const userFamilyId = user?.familyProfileId;
-
-        if (!userFamilyId) {
-            console.warn('No family profile ID found for user. User might need to complete family setup.');
-            return 1; // Fallback for now
+    useEffect(() => {
+        if (familyProfileId) {
+            loadFamilyEducationData();
         }
+    }, [familyProfileId]);
 
-        return userFamilyId;
-    });
+    // ADD THIS NEW useEffect HERE
+    useEffect(() => {
+        const generatePredictions = async () => {
+            const familyProfileId = localStorage.getItem('familyProfileId');
+
+            if (!familyProfileId) {
+                console.error('Family profile ID not found in localStorage');
+                return;
+            }
+
+            // Only run if we have education plans
+            if (!familyData.educationPlans || familyData.educationPlans.length === 0) {
+                return;
+            }
+
+            try {
+                const response = await axios.get(`http://localhost:8080/api/predictions/generate/${familyProfileId}`, {
+                    withCredentials: true
+                });
+                console.log('Predictions generated successfully:', response.data);
+            } catch (error) {
+                console.error('Error generating predictions:', error);
+            }
+        };
+
+        generatePredictions();
+    }, [familyData.educationPlans]);
 
     // Load complete family education data
     const loadFamilyEducationData = async () => {
-        if (!familyId) {
-            console.warn('No family ID available, skipping data load');
+        if (!familyProfileId) {
+            console.warn('No family profile ID available, skipping data load');
             setLoading(false);
             return;
         }
 
         setLoading(true);
         try {
-            console.log('Loading family education data for family ID:', familyId);
-            const data = await familyEducationAPI.getFamilyEducationData(familyId);
+            console.log('Loading family education data for family ID:', familyProfileId);
+            const data = await familyEducationAPI.getFamilyEducationData(familyProfileId);
             setFamilyData(data);
             console.log('Family education data loaded:', data);
+            setError(null);
         } catch (error) {
             console.error('Error loading family education data:', error);
 
             // More specific error handling
             if (error.message.includes('404')) {
-                alert('Family profile not found. Please complete your family setup first.');
+                setError('Family profile not found. Please complete your family setup first.');
             } else {
-                alert(`Failed to load family education data: ${error.message}`);
+                setError(`Failed to load family education data: ${error.message}`);
             }
         } finally {
             setLoading(false);
         }
     };
 
-    // Initial data load
+    // Load data when familyProfileId is available
     useEffect(() => {
-        // Only load data if user is authenticated and has family ID
-        if (userService.isAuthenticated() && familyId) {
+        if (familyProfileId) {
             loadFamilyEducationData();
-        } else if (!userService.isAuthenticated()) {
-            console.warn('User not authenticated, redirecting to login');
-            setLoading(false);
-        } else {
-            console.warn('No family ID available');
-            setLoading(false);
         }
-    }, [familyId]);
+    }, [familyProfileId]);
 
     // Handle child operations
     const handleChildSave = async () => {
@@ -707,7 +758,7 @@ export default function FamilyEducationPage() {
             await loadFamilyEducationData();
         } catch (error) {
             console.error('Error removing family member:', error);
-            alert(`Failed to remove family member: ${error.message}`);
+            setError(`Failed to remove family member: ${error.message}`);
         }
     };
 
@@ -726,76 +777,104 @@ export default function FamilyEducationPage() {
             await loadFamilyEducationData();
         } catch (error) {
             console.error('Error deleting education plan:', error);
-            alert(`Failed to delete education plan: ${error.message}`);
+            setError(`Failed to delete education plan: ${error.message}`);
         }
     };
 
-    // Fixed progress calculation functions with static 4% inflation
+    const openChildForm = () => {
+        if (!familyProfileId) {
+            setError('Family profile ID not available');
+            return;
+        }
+        setEditingChild(null);
+        setShowChildForm(true);
+    };
+
+    const openPlanForm = () => {
+        if (!familyProfileId) {
+            setError('Family profile ID not available');
+            return;
+        }
+        if (familyData.children.length === 0) {
+            setError('Please add at least one family member before creating education plans');
+            return;
+        }
+        setEditingPlan(null);
+        setShowPlanForm(true);
+    };
+
+    const openEditChildForm = (child) => {
+        setEditingChild(child);
+        setShowChildForm(true);
+    };
+
+    const openEditPlanForm = (plan) => {
+        setEditingPlan(plan);
+        setShowPlanForm(true);
+    };
+
+    const closeChildForm = () => {
+        setShowChildForm(false);
+        setEditingChild(null);
+    };
+
+    const closePlanForm = () => {
+        setShowPlanForm(false);
+        setEditingPlan(null);
+    };
+
+    // Progress calculation functions with static 4% inflation
     const getProgress = (plan) => {
         const currentYear = new Date().getFullYear();
         const yearsToStart = plan.estimatedStartYear - currentYear;
 
-        // If the education has already started or passed, check actual vs target
         if (yearsToStart <= 0) {
             const inflatedCost = parseFloat(plan.estimatedTotalCost);
             const currentSavings = parseFloat(plan.currentSavings || 0);
             return Math.min(100, (currentSavings / inflatedCost) * 100);
         }
 
-        // Calculate future value of current savings with compound interest
         const currentSavings = parseFloat(plan.currentSavings || 0);
         const monthlyContribution = parseFloat(plan.monthlyContribution || 0);
-        const annualInflationRate = 4.00 / 100; // Static 4% inflation rate
+        const annualInflationRate = 4.00 / 100;
         const monthlyInflationRate = annualInflationRate / 12;
         const monthsToStart = yearsToStart * 12;
 
-        // Future value of current savings
         const futureValueCurrentSavings = currentSavings * Math.pow(1 + annualInflationRate, yearsToStart);
 
-        // Future value of monthly contributions (annuity formula)
         let futureValueContributions = 0;
         if (monthlyContribution > 0 && monthlyInflationRate > 0) {
             futureValueContributions = monthlyContribution *
                 ((Math.pow(1 + monthlyInflationRate, monthsToStart) - 1) / monthlyInflationRate);
         } else if (monthlyContribution > 0) {
-            // If inflation rate is 0, simple multiplication
             futureValueContributions = monthlyContribution * monthsToStart;
         }
 
         const totalFutureValue = futureValueCurrentSavings + futureValueContributions;
-
-        // Inflate the cost to future value
         const inflatedCost = parseFloat(plan.estimatedTotalCost) * Math.pow(1 + annualInflationRate, yearsToStart);
-
-        // Calculate progress percentage
         const progress = (totalFutureValue / inflatedCost) * 100;
 
         return Math.min(100, Math.max(0, progress));
     };
 
-    // Fixed shortfall calculation with static 4% inflation
     const getShortfall = (plan) => {
         const currentYear = new Date().getFullYear();
         const yearsToStart = plan.estimatedStartYear - currentYear;
 
-        // If education has started, calculate immediate shortfall
         if (yearsToStart <= 0) {
             const inflatedCost = parseFloat(plan.estimatedTotalCost);
             const currentSavings = parseFloat(plan.currentSavings || 0);
             return Math.max(0, inflatedCost - currentSavings);
         }
 
-        // Calculate future value of savings
         const currentSavings = parseFloat(plan.currentSavings || 0);
         const monthlyContribution = parseFloat(plan.monthlyContribution || 0);
-        const annualInflationRate = 4.00 / 100; // Static 4% inflation rate
+        const annualInflationRate = 4.00 / 100;
         const monthlyInflationRate = annualInflationRate / 12;
         const monthsToStart = yearsToStart * 12;
 
-        // Future value of current savings
         const futureValueCurrentSavings = currentSavings * Math.pow(1 + annualInflationRate, yearsToStart);
 
-        // Future value of monthly contributions
         let futureValueContributions = 0;
         if (monthlyContribution > 0 && monthlyInflationRate > 0) {
             futureValueContributions = monthlyContribution *
@@ -805,37 +884,11 @@ export default function FamilyEducationPage() {
         }
 
         const totalFutureValue = futureValueCurrentSavings + futureValueContributions;
-
-        // Inflate the cost to future value
         const inflatedCost = parseFloat(plan.estimatedTotalCost) * Math.pow(1 + annualInflationRate, yearsToStart);
 
         return Math.max(0, inflatedCost - totalFutureValue);
     };
 
-    // Enhanced shortfall recommendation with static 4% inflation
-    const getRecommendedMonthlyIncrease = (plan, shortfall) => {
-        const currentYear = new Date().getFullYear();
-        const yearsToStart = plan.estimatedStartYear - currentYear;
-
-        if (yearsToStart <= 0 || shortfall <= 0) return 0;
-
-        const monthsToStart = yearsToStart * 12;
-        const annualInflationRate = 4.00 / 100; // Static 4% inflation rate
-        const monthlyInflationRate = annualInflationRate / 12;
-
-        if (monthlyInflationRate > 0) {
-            // Using present value of annuity formula to find required monthly payment
-            const requiredMonthly = shortfall /
-                ((Math.pow(1 + monthlyInflationRate, monthsToStart) - 1) / monthlyInflationRate);
-            return Math.ceil(requiredMonthly / 500) * 500; // Round up to nearest 500
-        } else {
-            // Simple division if no inflation
-            const requiredMonthly = shortfall / monthsToStart;
-            return Math.ceil(requiredMonthly / 500) * 500;
-        }
-    };
-
-    // Calculate age from date of birth
     const calculateAge = (dateOfBirth) => {
         const today = new Date();
         const birthDate = new Date(dateOfBirth);
@@ -847,95 +900,75 @@ export default function FamilyEducationPage() {
         return age;
     };
 
-    // Check if user is authenticated
-    if (!userService.isAuthenticated()) {
+    // Show loading if familyProfileId is not yet loaded
+    if (loading || familyProfileId === null) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-950 text-white flex items-center justify-center">
                 <div className="text-center">
-                    <h2 className="text-2xl font-bold mb-4">Authentication Required</h2>
-                    <p className="text-gray-300 mb-6">Please log in to access education planning.</p>
-                    <button
-                        onClick={() => window.location.href = '/'}
-                        className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
-                    >
-                        Go to Login
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-950 text-white flex items-center justify-center">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
                     <p className="text-xl">Loading family education data...</p>
-                    <p className="text-sm text-gray-300 mt-2">
-                        Welcome, {userService.getUserFullName()}!
-                    </p>
                 </div>
             </div>
         );
     }
 
-    // Show initial setup if no family ID or no children exist
-    if (!familyId || familyData.children.length === 0) {
+    // Show initial setup if no children exist
+    if (familyData.children.length === 0) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-950 text-white">
                 <DynamicNavbar />
 
                 <div className="max-w-7xl mx-auto px-6 md:px-16 lg:px-24 py-8">
+                    {/* Error Message */}
+                    {error && (
+                        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
+                            <p className="text-red-400">{error}</p>
+                            <button
+                                onClick={() => setError(null)}
+                                className="text-red-300 hover:text-red-100 text-sm mt-2"
+                            >
+                                Dismiss
+                            </button>
+                        </div>
+                    )}
+
                     <div className="text-center mb-8">
                         <h1 className="text-3xl font-bold text-white mb-2 flex items-center justify-center">
                             <GraduationCap className="mr-3" size={32} />
                             Family Education Planning
                         </h1>
                         <p className="text-gray-300 text-lg">
-                            Welcome, {userService.getUserFullName()}! Let's plan your family's educational future.
+                            Let's plan your family's educational future.
+                        </p>
+                        <p className="text-gray-400 text-sm">
+                            Family Profile ID: {familyProfileId}
                         </p>
                     </div>
 
                     <div className="bg-white/5 backdrop-blur-sm rounded-xl p-12 border border-white/10 text-center">
                         <Baby className="mx-auto mb-4 text-gray-400" size={64} />
                         <h3 className="text-2xl font-semibold text-white mb-4">
-                            {!familyId ? 'Complete Family Setup' : 'Start Your Family Education Journey'}
+                            Start Your Family Education Journey
                         </h3>
                         <p className="text-gray-300 mb-8 text-lg">
-                            {!familyId
-                                ? 'Please complete your family profile setup before adding education plans.'
-                                : 'Add your family members to begin planning their educational future together.'
-                            }
+                            Add your family members to begin planning their educational future together.
                         </p>
-                        {!familyId ? (
-                            <button
-                                onClick={() => window.location.href = '/family-details'}
-                                className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-8 py-4 rounded-lg transition-colors text-lg flex items-center mx-auto"
-                            >
-                                <User className="mr-2" size={20} />
-                                Complete Family Setup
-                            </button>
-                        ) : (
-                            <button
-                                onClick={() => setShowChildForm(true)}
-                                className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-8 py-4 rounded-lg transition-colors text-lg flex items-center mx-auto"
-                            >
-                                <User className="mr-2" size={20} />
-                                Add First Family Member
-                            </button>
-                        )}
+                        <button
+                            onClick={openChildForm}
+                            className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-8 py-4 rounded-lg transition-colors text-lg flex items-center mx-auto"
+                        >
+                            <User className="mr-2" size={20} />
+                            Add First Family Member
+                        </button>
                     </div>
                 </div>
 
-                {showChildForm && familyId && (
+                {showChildForm && (
                     <FamilyChildForm
                         child={editingChild}
                         onSave={handleChildSave}
-                        onCancel={() => {
-                            setShowChildForm(false);
-                            setEditingChild(null);
-                        }}
-                        familyId={familyId}
+                        onCancel={closeChildForm}
+                        familyProfileId={familyProfileId}
                     />
                 )}
             </div>
@@ -955,19 +988,22 @@ export default function FamilyEducationPage() {
                             Family Education Planning
                         </h1>
                         <p className="text-gray-300 text-lg">
-                            Welcome back, {userService.getUserFullName()}! Comprehensive education planning for your family.
+                            Comprehensive education planning for your family.
+                        </p>
+                        <p className="text-gray-400 text-sm">
+                            Family Profile ID: {familyProfileId}
                         </p>
                     </div>
                     <div className="flex space-x-4">
                         <button
-                            onClick={() => setShowChildForm(true)}
+                            onClick={openChildForm}
                             className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors flex items-center"
                         >
                             <User className="mr-2" size={20} />
                             Add Family Member
                         </button>
                         <button
-                            onClick={() => setShowPlanForm(true)}
+                            onClick={openPlanForm}
                             className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors flex items-center"
                         >
                             <Plus className="mr-2" size={20} />
@@ -975,6 +1011,19 @@ export default function FamilyEducationPage() {
                         </button>
                     </div>
                 </div>
+
+                {/* Error Message */}
+                {error && (
+                    <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
+                        <p className="text-red-400">{error}</p>
+                        <button
+                            onClick={() => setError(null)}
+                            className="text-red-300 hover:text-red-100 text-sm mt-2"
+                        >
+                            Dismiss
+                        </button>
+                    </div>
+                )}
 
                 {/* Family Overview */}
                 <div className="mb-8">
@@ -994,10 +1043,7 @@ export default function FamilyEducationPage() {
                                     </div>
                                     <div className="flex space-x-1">
                                         <button
-                                            onClick={() => {
-                                                setEditingChild(child);
-                                                setShowChildForm(true);
-                                            }}
+                                            onClick={() => openEditChildForm(child)}
                                             className="p-1 bg-blue-500/20 hover:bg-blue-500/30 rounded transition-colors"
                                         >
                                             <Edit3 className="text-blue-400" size={14} />
@@ -1092,7 +1138,7 @@ export default function FamilyEducationPage() {
                             <h3 className="text-xl font-semibold text-white mb-2">No Education Plans Yet</h3>
                             <p className="text-gray-300 mb-6">Start planning your family's educational future by creating your first plan.</p>
                             <button
-                                onClick={() => setShowPlanForm(true)}
+                                onClick={openPlanForm}
                                 className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
                             >
                                 Create First Plan
@@ -1118,10 +1164,7 @@ export default function FamilyEducationPage() {
                                         </div>
                                         <div className="flex space-x-2">
                                             <button
-                                                onClick={() => {
-                                                    setEditingPlan(plan);
-                                                    setShowPlanForm(true);
-                                                }}
+                                                onClick={() => openEditPlanForm(plan)}
                                                 className="p-2 bg-blue-500/20 hover:bg-blue-500/30 rounded-lg transition-colors"
                                             >
                                                 <Edit3 className="text-blue-400" size={18} />
@@ -1222,11 +1265,8 @@ export default function FamilyEducationPage() {
                 <FamilyChildForm
                     child={editingChild}
                     onSave={handleChildSave}
-                    onCancel={() => {
-                        setShowChildForm(false);
-                        setEditingChild(null);
-                    }}
-                    familyId={familyId}
+                    onCancel={closeChildForm}
+                    familyProfileId={familyProfileId}
                 />
             )}
 
@@ -1234,11 +1274,8 @@ export default function FamilyEducationPage() {
                 <FamilyEducationPlanForm
                     plan={editingPlan}
                     onSave={handlePlanSave}
-                    onCancel={() => {
-                        setShowPlanForm(false);
-                        setEditingPlan(null);
-                    }}
-                    familyId={familyId}
+                    onCancel={closePlanForm}
+                    familyProfileId={familyProfileId}
                     children={familyData.children}
                 />
             )}
