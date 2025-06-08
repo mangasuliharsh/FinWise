@@ -4,9 +4,24 @@ import DynamicNavbar from "../DynamicNavbar";
 import axios from "axios";
 
 // API Base URL Configuration
-const API_BASE_URL = 'http://localhost:8080'
+const API_BASE_URL = 'http://localhost:8080';
 
-
+// Enhanced Prediction API utility
+const predictionAPI = {
+    async generatePredictions(familyProfileId) {
+        try {
+            console.log('Generating predictions for familyProfileId:', familyProfileId);
+            const response = await axios.get(`${API_BASE_URL}/api/predictions/generate/${familyProfileId}`, {
+                withCredentials: true
+            });
+            console.log('Predictions generated successfully:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('Error generating predictions:', error);
+            throw error;
+        }
+    }
+};
 
 // Complete API service with localhost:8080 endpoints
 const familyEducationAPI = {
@@ -186,10 +201,7 @@ const familyEducationAPI = {
             throw error;
         }
     }
-
 };
-
-
 
 // Helper function to calculate family education summary
 const calculateFamilySummary = (children, educationPlans) => {
@@ -204,6 +216,145 @@ const calculateFamilySummary = (children, educationPlans) => {
             return acc;
         }, {})
     };
+};
+
+// Dual Progress Bar Component for Education Plans
+const DualProgressBar = ({ plan }) => {
+    // Calculate years to goal
+    const currentYear = new Date().getFullYear();
+    const targetYear = parseInt(plan.estimatedStartYear) || currentYear + 1;
+    const years = Math.max(0, targetYear - currentYear);
+
+    const currentSavings = parseFloat(plan.currentSavings) || 0;
+    const monthlyContrib = parseFloat(plan.monthlyContribution) || 0;
+    const inflationRate = 4.00; // Static 4% inflation rate for education
+    const estimatedTotal = parseFloat(plan.estimatedTotalCost) || 0;
+
+    // Inflation-adjusted target
+    const inflatedCost = estimatedTotal * Math.pow(1 + inflationRate / 100, years);
+
+    // Progress 1: Current Savings Only
+    const progressCurrent = inflatedCost > 0 ? Math.min(100, (currentSavings / inflatedCost) * 100) : 0;
+
+    // Progress 2: Projected (Current + Future Contributions)
+    let futureValueMonthlyContributions = 0;
+    if (monthlyContrib > 0 && inflationRate > 0) {
+        const monthlyRate = inflationRate / 100 / 12;
+        const totalMonths = years * 12;
+        futureValueMonthlyContributions = monthlyContrib *
+            ((Math.pow(1 + monthlyRate, totalMonths) - 1) / monthlyRate);
+    } else if (monthlyContrib > 0) {
+        futureValueMonthlyContributions = monthlyContrib * years * 12;
+    }
+    const futureValueCurrentSavings = currentSavings * Math.pow(1 + inflationRate / 100, years);
+    const totalFutureValue = futureValueCurrentSavings + futureValueMonthlyContributions;
+    const progressProjected = inflatedCost > 0 ? Math.min(100, (totalFutureValue / inflatedCost) * 100) : 0;
+
+    // Get progress status for current savings
+    const getCurrentStatus = (progress) => {
+        if (progress >= 80) return { text: 'Excellent', icon: '🎯', color: 'from-emerald-500 to-emerald-400' };
+        if (progress >= 60) return { text: 'Good', icon: '📈', color: 'from-blue-500 to-blue-400' };
+        if (progress >= 40) return { text: 'Fair', icon: '⚡', color: 'from-yellow-500 to-yellow-400' };
+        return { text: 'Needs Attention', icon: '⚠️', color: 'from-red-500 to-red-400' };
+    };
+
+    // Get progress status for projected savings
+    const getProjectedStatus = (progress) => {
+        if (progress >= 100) return { text: 'On Track', icon: '✅', color: 'from-emerald-500 to-emerald-400' };
+        if (progress >= 80) return { text: 'Good Pace', icon: '🚀', color: 'from-blue-500 to-blue-400' };
+        if (progress >= 60) return { text: 'Moderate', icon: '📊', color: 'from-yellow-500 to-yellow-400' };
+        return { text: 'Behind Target', icon: '🔴', color: 'from-red-500 to-red-400' };
+    };
+
+    const currentStatus = getCurrentStatus(progressCurrent);
+    const projectedStatus = getProjectedStatus(progressProjected);
+
+    return (
+        <div className="space-y-6">
+            {/* Current Savings Progress */}
+            <div className="bg-white/5 rounded-lg p-4">
+                <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center space-x-2">
+                        <span className="text-lg">{currentStatus.icon}</span>
+                        <span className="text-gray-300 font-medium">Current Savings Progress</span>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-white font-bold text-lg">{progressCurrent.toFixed(1)}%</p>
+                        <p className="text-gray-400 text-xs">{currentStatus.text}</p>
+                    </div>
+                </div>
+
+                <div className="relative mb-2">
+                    <div className="w-full bg-gray-700 rounded-full h-4 shadow-inner">
+                        <div
+                            className={`bg-gradient-to-r ${currentStatus.color} h-4 rounded-full transition-all duration-1000 ease-out relative overflow-hidden`}
+                            style={{ width: `${progressCurrent}%` }}
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="text-xs text-gray-400">
+                    Saved: ₹{(currentSavings / 100000).toFixed(2)}L / Target: ₹{(inflatedCost / 100000).toFixed(2)}L
+                </div>
+            </div>
+
+            {/* Projected Progress (Current + Future Contributions) */}
+            <div className="bg-white/5 rounded-lg p-4">
+                <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center space-x-2">
+                        <span className="text-lg">{projectedStatus.icon}</span>
+                        <span className="text-gray-300 font-medium">Projected Progress (with future savings)</span>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-white font-bold text-lg">{progressProjected.toFixed(1)}%</p>
+                        <p className="text-gray-400 text-xs">{projectedStatus.text}</p>
+                    </div>
+                </div>
+
+                <div className="relative mb-2">
+                    <div className="w-full bg-gray-700 rounded-full h-4 shadow-inner">
+                        <div
+                            className={`bg-gradient-to-r ${projectedStatus.color} h-4 rounded-full transition-all duration-1000 ease-out relative overflow-hidden`}
+                            style={{ width: `${Math.min(100, progressProjected)}%` }}
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
+                        </div>
+                    </div>
+
+                    {/* Progress milestones */}
+                    <div className="flex justify-between mt-1 text-xs text-gray-500">
+                        <span>0%</span>
+                        <span>25%</span>
+                        <span>50%</span>
+                        <span>75%</span>
+                        <span>100%</span>
+                    </div>
+                </div>
+
+                <div className="text-xs text-gray-400">
+                    Projected: ₹{(totalFutureValue / 100000).toFixed(2)}L / Target: ₹{(inflatedCost / 100000).toFixed(2)}L
+                </div>
+            </div>
+
+            {/* Progress Summary Cards */}
+            <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/5 rounded-lg p-3">
+                    <p className="text-gray-400 text-xs">Monthly Contribution</p>
+                    <p className="text-white font-semibold">
+                        ₹{monthlyContrib.toLocaleString()}
+                    </p>
+                </div>
+                <div className="bg-white/5 rounded-lg p-3">
+                    <p className="text-gray-400 text-xs">Years Remaining</p>
+                    <p className="text-white font-semibold">
+                        {years} {years === 1 ? 'year' : 'years'}
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 // Family Child Form Component
@@ -235,8 +386,6 @@ const FamilyChildForm = ({ child, onSave, onCancel, familyProfileId }) => {
             });
         }
     }, [child, familyProfileId]);
-
-
 
     const validateForm = () => {
         const newErrors = {};
@@ -659,8 +808,9 @@ export default function FamilyEducationPage() {
     const [editingChild, setEditingChild] = useState(null);
     const [editingPlan, setEditingPlan] = useState(null);
     const [familyProfileId, setFamilyProfileId] = useState(null);
+    const [predictionsLoading, setPredictionsLoading] = useState(false);
 
-    // Get familyProfileId from localStorage - UPDATED TO MATCH MARRIAGE PAGE
+    // Get familyProfileId from localStorage
     useEffect(() => {
         const storedFamilyProfileId = localStorage.getItem('familyProfileId');
         console.log('Retrieved familyProfileId from localStorage:', storedFamilyProfileId);
@@ -673,39 +823,45 @@ export default function FamilyEducationPage() {
         }
     }, []);
 
+    // Enhanced prediction generation function
+    const generatePredictions = async (familyId = null) => {
+        const targetFamilyId = familyId || familyProfileId;
+
+        if (!targetFamilyId) {
+            console.error('Family profile ID not available for predictions');
+            return;
+        }
+
+        try {
+            setPredictionsLoading(true);
+            await predictionAPI.generatePredictions(targetFamilyId);
+        } catch (error) {
+            console.error('Failed to generate predictions:', error);
+        } finally {
+            setPredictionsLoading(false);
+        }
+    };
+
+    // Generate predictions on page load
+    useEffect(() => {
+        if (familyProfileId) {
+            generatePredictions(familyProfileId);
+        }
+    }, [familyProfileId]);
+
+    // Generate predictions whenever education plans change
+    useEffect(() => {
+        if (familyData.educationPlans.length > 0 && familyProfileId) {
+            generatePredictions(familyProfileId);
+        }
+    }, [familyData.educationPlans, familyProfileId]);
+
+    // Load data when familyProfileId is available
     useEffect(() => {
         if (familyProfileId) {
             loadFamilyEducationData();
         }
     }, [familyProfileId]);
-
-    // ADD THIS NEW useEffect HERE
-    useEffect(() => {
-        const generatePredictions = async () => {
-            const familyProfileId = localStorage.getItem('familyProfileId');
-
-            if (!familyProfileId) {
-                console.error('Family profile ID not found in localStorage');
-                return;
-            }
-
-            // Only run if we have education plans
-            if (!familyData.educationPlans || familyData.educationPlans.length === 0) {
-                return;
-            }
-
-            try {
-                const response = await axios.get(`http://localhost:8080/api/predictions/generate/${familyProfileId}`, {
-                    withCredentials: true
-                });
-                console.log('Predictions generated successfully:', response.data);
-            } catch (error) {
-                console.error('Error generating predictions:', error);
-            }
-        };
-
-        generatePredictions();
-    }, [familyData.educationPlans]);
 
     // Load complete family education data
     const loadFamilyEducationData = async () => {
@@ -736,18 +892,13 @@ export default function FamilyEducationPage() {
         }
     };
 
-    // Load data when familyProfileId is available
-    useEffect(() => {
-        if (familyProfileId) {
-            loadFamilyEducationData();
-        }
-    }, [familyProfileId]);
-
     // Handle child operations
     const handleChildSave = async () => {
         setShowChildForm(false);
         setEditingChild(null);
         await loadFamilyEducationData();
+        // Generate predictions after child operations
+        await generatePredictions(familyProfileId);
     };
 
     const handleChildDelete = async (childId) => {
@@ -756,6 +907,8 @@ export default function FamilyEducationPage() {
         try {
             await familyEducationAPI.removeFamilyChild(childId);
             await loadFamilyEducationData();
+            // Generate predictions after deletion
+            await generatePredictions(familyProfileId);
         } catch (error) {
             console.error('Error removing family member:', error);
             setError(`Failed to remove family member: ${error.message}`);
@@ -767,6 +920,8 @@ export default function FamilyEducationPage() {
         setShowPlanForm(false);
         setEditingPlan(null);
         await loadFamilyEducationData();
+        // Generate predictions after plan operations
+        await generatePredictions(familyProfileId);
     };
 
     const handlePlanDelete = async (planId) => {
@@ -775,6 +930,8 @@ export default function FamilyEducationPage() {
         try {
             await familyEducationAPI.deleteEducationPlan(planId);
             await loadFamilyEducationData();
+            // Generate predictions after deletion
+            await generatePredictions(familyProfileId);
         } catch (error) {
             console.error('Error deleting education plan:', error);
             setError(`Failed to delete education plan: ${error.message}`);
@@ -821,6 +978,11 @@ export default function FamilyEducationPage() {
     const closePlanForm = () => {
         setShowPlanForm(false);
         setEditingPlan(null);
+    };
+
+    // Manual refresh function for predictions
+    const refreshPredictions = async () => {
+        await generatePredictions(familyProfileId);
     };
 
     // Progress calculation functions with static 4% inflation
@@ -940,9 +1102,12 @@ export default function FamilyEducationPage() {
                         <p className="text-gray-300 text-lg">
                             Let's plan your family's educational future.
                         </p>
-                        <p className="text-gray-400 text-sm">
-                            Family Profile ID: {familyProfileId}
-                        </p>
+                        {predictionsLoading && (
+                            <div className="flex items-center justify-center mt-2">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-400 mr-2"></div>
+                                <p className="text-emerald-400 text-sm">Updating predictions...</p>
+                            </div>
+                        )}
                     </div>
 
                     <div className="bg-white/5 backdrop-blur-sm rounded-xl p-12 border border-white/10 text-center">
@@ -980,7 +1145,7 @@ export default function FamilyEducationPage() {
             <DynamicNavbar />
 
             <div className="max-w-7xl mx-auto px-6 md:px-16 lg:px-24 py-8">
-                {/* Header */}
+                {/* Header - Family ID Removed */}
                 <div className="flex justify-between items-center mb-8">
                     <div>
                         <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
@@ -990,11 +1155,26 @@ export default function FamilyEducationPage() {
                         <p className="text-gray-300 text-lg">
                             Comprehensive education planning for your family.
                         </p>
-                        <p className="text-gray-400 text-sm">
-                            Family Profile ID: {familyProfileId}
-                        </p>
+                        {predictionsLoading && (
+                            <div className="flex items-center mt-2">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-400 mr-2"></div>
+                                <p className="text-emerald-400 text-sm">Updating predictions...</p>
+                            </div>
+                        )}
                     </div>
-                    <div className="flex space-x-4">
+                    <div className="flex space-x-3">
+                        <button
+                            onClick={refreshPredictions}
+                            disabled={predictionsLoading}
+                            className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-5 py-3 rounded-lg transition-colors shadow-lg flex items-center disabled:opacity-50"
+                        >
+                            {predictionsLoading ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            ) : (
+                                <Target className="mr-2" size={18} />
+                            )}
+                            Refresh Predictions
+                        </button>
                         <button
                             onClick={openChildForm}
                             className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors flex items-center"
@@ -1145,140 +1325,132 @@ export default function FamilyEducationPage() {
                             </button>
                         </div>
                     ) : (
-                        familyData.educationPlans.map(plan => {
-                            const progress = getProgress(plan);
-                            const shortfall = getShortfall(plan);
-                            const childName = familyData.children.find(child => child.id === plan.childId)?.name || 'Unknown Child';
+                        <div className="space-y-6">
+                            {familyData.educationPlans.map(plan => {
+                                const shortfall = getShortfall(plan);
+                                const childName = familyData.children.find(child => child.id === plan.childId)?.name || 'Unknown Child';
 
-                            return (
-                                <div key={plan.id} className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-                                    <div className="flex items-center justify-between mb-6">
-                                        <div className="flex items-center space-x-4">
-                                            <div className="p-3 bg-purple-500/20 rounded-full">
-                                                <GraduationCap className="text-purple-400" size={24} />
-                                            </div>
-                                            <div>
-                                                <h3 className="text-xl font-bold text-white">{plan.planName}</h3>
-                                                <p className="text-gray-300">Family Member: {childName}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex space-x-2">
-                                            <button
-                                                onClick={() => openEditPlanForm(plan)}
-                                                className="p-2 bg-blue-500/20 hover:bg-blue-500/30 rounded-lg transition-colors"
-                                            >
-                                                <Edit3 className="text-blue-400" size={18} />
-                                            </button>
-                                            <button
-                                                onClick={() => handlePlanDelete(plan.id)}
-                                                className="p-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition-colors"
-                                            >
-                                                <Trash2 className="text-red-400" size={18} />
-                                            </button>
-                                        </div>
+                                return (
+                                    <div key={plan.id} className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center space-x-4">
+                                    <div className="p-3 bg-purple-500/20 rounded-full">
+                                        <GraduationCap className="text-purple-400" size={24} />
                                     </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                                        <div className="bg-white/5 rounded-lg p-4">
-                                            <p className="text-gray-400 text-sm">Education Level</p>
-                                            <p className="text-white font-semibold text-lg">{plan.educationLevel}</p>
-                                        </div>
-                                        <div className="bg-white/5 rounded-lg p-4">
-                                            <p className="text-gray-400 text-sm">Institution Type</p>
-                                            <p className="text-white font-semibold text-lg">{plan.institutionType}</p>
-                                        </div>
-                                        <div className="bg-white/5 rounded-lg p-4">
-                                            <p className="text-gray-400 text-sm">Duration</p>
-                                            <p className="text-white font-semibold text-lg">
-                                                {plan.estimatedStartYear} - {plan.estimatedEndYear}
-                                            </p>
-                                        </div>
-                                        <div className="bg-white/5 rounded-lg p-4">
-                                            <p className="text-gray-400 text-sm">Estimated Cost</p>
-                                            <p className="text-white font-semibold text-lg">
-                                                ₹{(parseFloat(plan.estimatedTotalCost) / 100000).toFixed(1)}L
-                                            </p>
-                                        </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white">{plan.planName}</h3>
+                                        <p className="text-gray-300">Family Member: {childName}</p>
                                     </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                                        <div className="bg-white/5 rounded-lg p-4">
-                                            <p className="text-gray-400 text-sm">Current Savings</p>
-                                            <p className="text-white font-semibold text-lg">
-                                                ₹{(parseFloat(plan.currentSavings || 0) / 100000).toFixed(2)}L
-                                            </p>
-                                        </div>
-                                        <div className="bg-white/5 rounded-lg p-4">
-                                            <p className="text-gray-400 text-sm">Monthly Contribution</p>
-                                            <p className="text-white font-semibold text-lg">
-                                                ₹{parseFloat(plan.monthlyContribution || 0).toLocaleString()}
-                                            </p>
-                                        </div>
-                                        <div className="bg-white/5 rounded-lg p-4">
-                                            <p className="text-gray-400 text-sm">Inflation Rate</p>
-                                            <p className="text-white font-semibold text-lg">4.00%</p>
-                                        </div>
-                                    </div>
-
-                                    {plan.notes && (
-                                        <div className="bg-white/5 rounded-lg p-4 mb-6">
-                                            <p className="text-gray-400 text-sm">Notes</p>
-                                            <p className="text-white font-semibold">{plan.notes}</p>
-                                        </div>
-                                    )}
-
-                                    <div className="mb-4">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <p className="text-gray-300 font-medium">Savings Progress</p>
-                                            <p className="text-white font-semibold">{progress.toFixed(1)}%</p>
-                                        </div>
-                                        <div className="w-full bg-gray-700 rounded-full h-3">
-                                            <div
-                                                className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-3 rounded-full transition-all duration-500"
-                                                style={{ width: `${Math.min(100, progress)}%` }}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {shortfall > 0 && (
-                                        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-                                            <div className="flex items-center space-x-2 mb-2">
-                                                <Target className="text-red-400" size={20} />
-                                                <p className="text-red-400 font-semibold">
-                                                    Shortfall: ₹{(shortfall / 100000).toFixed(1)}L
-                                                </p>
-                                            </div>
-                                            <p className="text-red-300 text-sm">
-                                                Consider increasing monthly contribution by ₹{Math.ceil(shortfall / ((plan.estimatedStartYear - new Date().getFullYear()) * 12) / 1000) * 1000}
-                                            </p>
-                                        </div>
-                                    )}
                                 </div>
-                            );
-                        })
-                    )}
+                                <div className="flex space-x-2">
+                                    <button
+                                        onClick={() => openEditPlanForm(plan)}
+                                        className="p-2 bg-blue-500/20 hover:bg-blue-500/30 rounded-lg transition-colors"
+                                    >
+                                        <Edit3 className="text-blue-400" size={18} />
+                                    </button>
+                                    <button
+                                        onClick={() => handlePlanDelete(plan.id)}
+                                        className="p-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition-colors"
+                                    >
+                                        <Trash2 className="text-red-400" size={18} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                                <div className="bg-white/5 rounded-lg p-4">
+                                    <p className="text-gray-400 text-sm">Education Level</p>
+                                    <p className="text-white font-semibold text-lg">{plan.educationLevel}</p>
+                                </div>
+                                <div className="bg-white/5 rounded-lg p-4">
+                                    <p className="text-gray-400 text-sm">Institution Type</p>
+                                    <p className="text-white font-semibold text-lg">{plan.institutionType}</p>
+                                </div>
+                                <div className="bg-white/5 rounded-lg p-4">
+                                    <p className="text-gray-400 text-sm">Duration</p>
+                                    <p className="text-white font-semibold text-lg">
+                                        {plan.estimatedStartYear} - {plan.estimatedEndYear}
+                                    </p>
+                                </div>
+                                <div className="bg-white/5 rounded-lg p-4">
+                                    <p className="text-gray-400 text-sm">Estimated Cost</p>
+                                    <p className="text-white font-semibold text-lg">
+                                        ₹{(parseFloat(plan.estimatedTotalCost) / 100000).toFixed(1)}L
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                <div className="bg-white/5 rounded-lg p-4">
+                                    <p className="text-gray-400 text-sm">Current Savings</p>
+                                    <p className="text-white font-semibold text-lg">
+                                        ₹{(parseFloat(plan.currentSavings || 0) / 100000).toFixed(2)}L
+                                    </p>
+                                </div>
+                                <div className="bg-white/5 rounded-lg p-4">
+                                    <p className="text-gray-400 text-sm">Monthly Contribution</p>
+                                    <p className="text-white font-semibold text-lg">
+                                        ₹{parseFloat(plan.monthlyContribution || 0).toLocaleString()}
+                                    </p>
+                                </div>
+                                <div className="bg-white/5 rounded-lg p-4">
+                                    <p className="text-gray-400 text-sm">Inflation Rate</p>
+                                    <p className="text-white font-semibold text-lg">4.00%</p>
+                                </div>
+                            </div>
+
+                            {plan.notes && (
+                                <div className="bg-white/5 rounded-lg p-4 mb-6">
+                                    <p className="text-gray-400 text-sm">Notes</p>
+                                    <p className="text-white font-semibold">{plan.notes}</p>
+                                </div>
+                            )}
+
+                            {/* Dual Progress Bars */}
+                            <DualProgressBar plan={plan} />
+
+                            {shortfall > 0 && (
+                                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mt-6">
+                                    <div className="flex items-center space-x-2 mb-2">
+                                        <Target className="text-red-400" size={20} />
+                                        <p className="text-red-400 font-semibold">
+                                            Shortfall: ₹{(shortfall / 100000).toFixed(1)}L
+                                        </p>
+                                    </div>
+                                    <p className="text-red-300 text-sm">
+                                        Consider increasing monthly contribution by ₹{Math.ceil(shortfall / ((plan.estimatedStartYear - new Date().getFullYear()) * 12) / 1000) * 1000}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    );
+                    })}
                 </div>
+                )}
             </div>
-
-            {/* Modals */}
-            {showChildForm && (
-                <FamilyChildForm
-                    child={editingChild}
-                    onSave={handleChildSave}
-                    onCancel={closeChildForm}
-                    familyProfileId={familyProfileId}
-                />
-            )}
-
-            {showPlanForm && (
-                <FamilyEducationPlanForm
-                    plan={editingPlan}
-                    onSave={handlePlanSave}
-                    onCancel={closePlanForm}
-                    familyProfileId={familyProfileId}
-                    children={familyData.children}
-                />
-            )}
         </div>
-    );
+
+    {/* Modals */}
+    {showChildForm && (
+        <FamilyChildForm
+            child={editingChild}
+            onSave={handleChildSave}
+            onCancel={closeChildForm}
+            familyProfileId={familyProfileId}
+        />
+    )}
+
+    {showPlanForm && (
+        <FamilyEducationPlanForm
+            plan={editingPlan}
+            onSave={handlePlanSave}
+            onCancel={closePlanForm}
+            familyProfileId={familyProfileId}
+            children={familyData.children}
+        />
+    )}
+</div>
+);
 }
+
