@@ -1,5 +1,5 @@
 // src/pages/Register.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
 import axios from 'axios';
@@ -17,7 +17,17 @@ const Register = () => {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+    const [isRegistered, setIsRegistered] = useState(false);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (isRegistered) {
+            const timer = setTimeout(() => {
+                navigate('/'); // Redirect to main page or login
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [isRegistered, navigate]);
 
     const handleChange = (e) => {
         setFormData({
@@ -75,8 +85,8 @@ const Register = () => {
             const response = await axios.post('http://localhost:8080/api/auth/register', registrationData);
 
             if (response.data.success) {
-                // Registration successful, redirect to family details (new user)
-                navigate('/family-details');
+                // Show success message and redirect after delay
+                setIsRegistered(true);
             }
         } catch (error) {
             if (error.response?.status === 409) {
@@ -90,6 +100,18 @@ const Register = () => {
             setIsLoading(false);
         }
     };
+
+    if (isRegistered) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-950 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+                <div className="max-w-md w-full text-center text-white bg-white/10 backdrop-blur-sm rounded-xl p-8 border border-white/20">
+                    <h2 className="text-2xl font-bold mb-4">Registration Complete!</h2>
+                    <p className="text-lg mb-6">Please login back to use the services.</p>
+                    <p>Redirecting to main page...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-950 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
