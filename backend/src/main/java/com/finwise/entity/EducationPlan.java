@@ -44,4 +44,8 @@ public class EducationPlan {
     public void setFamilyProfile(FamilyProfile familyProfile) {
         this.child.setFamilyProfile(familyProfile);
     }
+
+    public FamilyProfile getFamilyProfile() {
+        return null;
+    }
 }
