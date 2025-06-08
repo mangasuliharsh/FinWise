@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, Calendar, DollarSign, Edit3, Trash2, Target, Plus, X, Save } from 'lucide-react';
 import DynamicNavbar from "../DynamicNavbar";
+import axios from 'axios';
 
 // API endpoint
 const API_BASE_URL = 'http://localhost:8080';
 
-// API service
+// API service with proper authentication
 const investmentAPI = {
     async getAllPlans(familyProfileId) {
-        const response = await fetch(`${API_BASE_URL}/api/investment-plans/family/${familyProfileId}`);
+        const response = await fetch(`${API_BASE_URL}/api/investment-plans/family/${familyProfileId}`, {
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+        });
         if (!response.ok) throw new Error('Failed to fetch plans');
         return response.json();
     },
@@ -16,6 +20,7 @@ const investmentAPI = {
         const response = await fetch(`${API_BASE_URL}/api/investment-plans/${familyProfileId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify(planData)
         });
         if (!response.ok) throw new Error('Failed to create plan');
@@ -25,13 +30,18 @@ const investmentAPI = {
         const response = await fetch(`${API_BASE_URL}/api/investment-plans/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify(planData)
         });
         if (!response.ok) throw new Error('Failed to update plan');
         return response.json();
     },
     async deletePlan(id) {
-        const response = await fetch(`${API_BASE_URL}/api/investment-plans/${id}`, { method: 'DELETE' });
+        const response = await fetch(`${API_BASE_URL}/api/investment-plans/${id}`, {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+        });
         if (!response.ok) throw new Error('Failed to delete plan');
     }
 };
@@ -45,10 +55,13 @@ function getProgress(plan) {
     const monthlyContrib = parseFloat(plan.monthlyContribution) || 0;
     const expectedReturn = parseFloat(plan.expectedReturn) || 8;
     const goalAmount = parseFloat(plan.goalAmount) || 0;
+
     if (goalAmount <= 0) return 0;
     if (years <= 0) return Math.min(100, (currentSavings / goalAmount) * 100);
+
     const futureValueCurrent = currentSavings * Math.pow(1 + expectedReturn / 100, years);
     let futureValueMonthly = 0;
+
     if (monthlyContrib > 0 && expectedReturn > 0) {
         const monthlyRate = expectedReturn / 100 / 12;
         const totalMonths = years * 12;
@@ -56,6 +69,7 @@ function getProgress(plan) {
     } else if (monthlyContrib > 0) {
         futureValueMonthly = monthlyContrib * years * 12;
     }
+
     const totalFutureValue = futureValueCurrent + futureValueMonthly;
     return Math.min(100, (totalFutureValue / goalAmount) * 100);
 }
@@ -68,10 +82,13 @@ function getShortfall(plan) {
     const monthlyContrib = parseFloat(plan.monthlyContribution) || 0;
     const expectedReturn = parseFloat(plan.expectedReturn) || 8;
     const goalAmount = parseFloat(plan.goalAmount) || 0;
+
     if (goalAmount <= 0) return 0;
     if (years <= 0) return Math.max(0, goalAmount - currentSavings);
+
     const futureValueCurrent = currentSavings * Math.pow(1 + expectedReturn / 100, years);
     let futureValueMonthly = 0;
+
     if (monthlyContrib > 0 && expectedReturn > 0) {
         const monthlyRate = expectedReturn / 100 / 12;
         const totalMonths = years * 12;
@@ -79,6 +96,7 @@ function getShortfall(plan) {
     } else if (monthlyContrib > 0) {
         futureValueMonthly = monthlyContrib * years * 12;
     }
+
     const totalFutureValue = futureValueCurrent + futureValueMonthly;
     return Math.max(0, goalAmount - totalFutureValue);
 }
@@ -142,13 +160,14 @@ const InvestmentPlanModal = ({ isOpen, onClose, onSave, plan = null, familyProfi
             await onSave(formData);
             onClose();
         } catch (error) {
-            // Optionally show error
+            console.error('Error saving plan:', error);
         } finally {
             setLoading(false);
         }
     };
 
     if (!isOpen) return null;
+
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-white/20">
@@ -281,41 +300,86 @@ export default function InvestmentPage() {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPlan, setEditingPlan] = useState(null);
+    const [familyProfileId, setFamilyProfileId] = useState(null);
+    const [error, setError] = useState(null);
 
-    // Replace with actual family profile ID from auth context or props
-    const familyProfileId = 1;
-
+    // Get familyProfileId from localStorage - SAME AS EDUCATION MODULE
     useEffect(() => {
-        loadPlans();
-        // eslint-disable-next-line
+        const storedFamilyProfileId = localStorage.getItem('familyProfileId');
+        console.log('Retrieved familyProfileId from localStorage:', storedFamilyProfileId);
+
+        if (storedFamilyProfileId) {
+            setFamilyProfileId(parseInt(storedFamilyProfileId));
+        } else {
+            setError('Family profile not found. Please complete your profile first.');
+            setLoading(false);
+        }
     }, []);
 
+    useEffect(() => {
+        if (familyProfileId) {
+            loadPlans();
+        }
+    }, [familyProfileId]);
+
     const loadPlans = async () => {
+        if (!familyProfileId) {
+            console.warn('No family profile ID available, skipping data load');
+            setLoading(false);
+            return;
+        }
+
         try {
             setLoading(true);
+            console.log('Loading investment plans for family ID:', familyProfileId);
             const plans = await investmentAPI.getAllPlans(familyProfileId);
             setInvestmentPlans(plans || []);
+            console.log('Investment plans loaded:', plans);
+            setError(null);
         } catch (err) {
+            console.error('Error loading plans:', err);
             setInvestmentPlans([]);
+
+            // More specific error handling
+            if (err.message.includes('404')) {
+                setError('Family profile not found. Please complete your family setup first.');
+            } else {
+                setError(`Failed to load investment plans: ${err.message}`);
+            }
         } finally {
             setLoading(false);
         }
     };
 
     const handleCreatePlan = async (planData) => {
+        if (!familyProfileId) {
+            setError('Family profile ID not available');
+            return;
+        }
+
         try {
+            console.log('Creating plan for family ID:', familyProfileId, 'with data:', planData);
             const newPlan = await investmentAPI.createPlan(familyProfileId, planData);
             setInvestmentPlans(prev => [...prev, newPlan]);
-        } catch (err) {}
+            setError(null);
+        } catch (err) {
+            console.error('Error creating plan:', err);
+            setError(`Failed to create investment plan: ${err.message}`);
+        }
     };
 
     const handleUpdatePlan = async (planData) => {
         try {
+            console.log('Updating plan ID:', editingPlan.id, 'with data:', planData);
             const updatedPlan = await investmentAPI.updatePlan(editingPlan.id, planData);
             setInvestmentPlans(prev => prev.map(plan =>
                 plan.id === editingPlan.id ? updatedPlan : plan
             ));
-        } catch (err) {}
+            setError(null);
+        } catch (err) {
+            console.error('Error updating plan:', err);
+            setError(`Failed to update investment plan: ${err.message}`);
+        }
     };
 
     const handleDeletePlan = async (planId) => {
@@ -323,10 +387,18 @@ export default function InvestmentPage() {
         try {
             await investmentAPI.deletePlan(planId);
             setInvestmentPlans(prev => prev.filter(plan => plan.id !== planId));
-        } catch (err) {}
+            setError(null);
+        } catch (err) {
+            console.error('Error deleting plan:', err);
+            setError(`Failed to delete investment plan: ${err.message}`);
+        }
     };
 
     const openCreateModal = () => {
+        if (!familyProfileId) {
+            setError('Family profile ID not available');
+            return;
+        }
         setEditingPlan(null);
         setIsModalOpen(true);
     };
@@ -347,7 +419,8 @@ export default function InvestmentPage() {
     const totalSavings = investmentPlans.reduce((sum, plan) => sum + parseFloat(plan.currentSavings || 0), 0);
     const totalMonthlyContrib = investmentPlans.reduce((sum, plan) => sum + parseFloat(plan.monthlyContribution || 0), 0);
 
-    if (loading) {
+    // Show loading if familyProfileId is not yet loaded
+    if (loading || familyProfileId === null) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-950 text-white flex items-center justify-center">
                 <div className="text-center">
@@ -358,11 +431,47 @@ export default function InvestmentPage() {
         );
     }
 
+    // Show error if no family profile found
+    if (error && !familyProfileId) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-950 text-white">
+                <DynamicNavbar />
+                <div className="max-w-7xl mx-auto px-6 md:px-16 lg:px-24 py-8">
+                    <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-8 text-center">
+                        <h2 className="text-2xl font-bold text-red-400 mb-4">Error</h2>
+                        <p className="text-red-300 mb-6">{error}</p>
+                        <p className="text-gray-400 text-sm mb-6">
+                            Please complete your family profile setup first.
+                        </p>
+                        <button
+                            onClick={() => window.location.href = '/family-profile'}
+                            className="bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
+                        >
+                            Go to Family Profile
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-950 text-white">
             <DynamicNavbar />
-
             <div className="max-w-7xl mx-auto px-6 md:px-16 lg:px-24 py-8">
+                {/* Error Message */}
+                {error && (
+                    <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
+                        <p className="text-red-300">{error}</p>
+                        <button
+                            onClick={() => setError(null)}
+                            className="text-red-300 hover:text-red-100 text-sm mt-2"
+                        >
+                            Dismiss
+                        </button>
+                    </div>
+                )}
+
                 <div className="flex justify-between items-center mb-8">
                     <div>
                         <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
@@ -372,10 +481,14 @@ export default function InvestmentPage() {
                         <p className="text-gray-300 text-lg">
                             Plan and track your family's investments and savings goals
                         </p>
+                        <p className="text-gray-400 text-sm">
+                            Family Profile ID: {familyProfileId}
+                        </p>
                     </div>
                     <button
                         onClick={openCreateModal}
-                        className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-lg px-7 py-3 rounded-lg transition-colors shadow-lg flex items-center"
+                        disabled={!familyProfileId}
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-lg px-7 py-3 rounded-lg transition-colors shadow-lg flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <Plus className="mr-2" size={20} />
                         Add Plan
@@ -422,6 +535,7 @@ export default function InvestmentPage() {
                         </p>
                         <p className="text-orange-400 text-sm mt-1">Planned investment goals</p>
                     </div>
+
                     <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
                         <div className="flex items-center justify-between mb-4">
                             <div className="p-2 bg-purple-500/20 rounded-lg">
@@ -442,7 +556,8 @@ export default function InvestmentPage() {
                         <p className="text-gray-300 mb-6">Start planning for your family's financial future</p>
                         <button
                             onClick={openCreateModal}
-                            className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
+                            disabled={!familyProfileId}
+                            className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Create Your First Plan
                         </button>
@@ -462,6 +577,7 @@ export default function InvestmentPage() {
                                             <div>
                                                 <h3 className="text-xl font-bold text-white">{plan.planName}</h3>
                                                 <p className="text-gray-300">Goal: ₹{parseFloat(plan.goalAmount).toLocaleString()}</p>
+                                                <p className="text-gray-400 text-sm">Family ID: {plan.familyProfileId}</p>
                                             </div>
                                         </div>
                                         <div className="flex space-x-2">
@@ -479,6 +595,7 @@ export default function InvestmentPage() {
                                             </button>
                                         </div>
                                     </div>
+
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                                         <div className="bg-white/5 rounded-lg p-4">
                                             <p className="text-gray-400 text-sm">Target Year</p>
@@ -497,6 +614,7 @@ export default function InvestmentPage() {
                                             <p className="text-white font-semibold text-lg">₹{parseFloat(plan.monthlyContribution || 0).toLocaleString()}</p>
                                         </div>
                                     </div>
+
                                     <div className="mb-4">
                                         <div className="flex justify-between items-center mb-2">
                                             <p className="text-gray-300 font-medium">Investment Progress</p>
@@ -509,6 +627,7 @@ export default function InvestmentPage() {
                                             />
                                         </div>
                                     </div>
+
                                     {shortfall > 0 && (
                                         <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
                                             <div className="flex items-center space-x-2 mb-2">
@@ -522,6 +641,7 @@ export default function InvestmentPage() {
                                             </p>
                                         </div>
                                     )}
+
                                     {plan.notes && (
                                         <div className="bg-white/5 rounded-lg p-4 mt-4">
                                             <p className="text-gray-400 text-sm">Notes</p>
@@ -536,7 +656,7 @@ export default function InvestmentPage() {
             </div>
 
             {/* Modal */}
-            {isModalOpen && (
+            {isModalOpen && familyProfileId && (
                 <InvestmentPlanModal
                     isOpen={isModalOpen}
                     onClose={closeModal}
