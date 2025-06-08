@@ -206,29 +206,36 @@ const DynamicNavbar = () => {
                     onClick={() => navigate('/dashboard')}
                     className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
                 >
-                    <Home size={18} />
+                    <Home size={18}/>
                     <span>Dashboard</span>
                 </button>
                 <button
                     onClick={() => navigate('/Education')}
                     className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
                 >
-                    <PieChart size={18} />
+                    <PieChart size={18}/>
                     <span>Education</span>
                 </button>
                 <button
                     onClick={() => navigate('/Marriage')}
                     className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
                 >
-                    <PieChart size={18} />
+                    <PieChart size={18}/>
                     <span>Marriage</span>
                 </button>
                 <button
                     onClick={() => navigate('/investment')}
                     className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
                 >
-                    <PieChart size={18} />
+                    <PieChart size={18}/>
                     <span>Investments</span>
+                </button>
+                <button
+                    onClick={() => navigate('/investment-options')}
+                    className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
+                >
+                    <PieChart size={18}/>
+                    <span>Investment Options</span>
                 </button>
             </div>
 

@@ -6,12 +6,7 @@ import axios from "axios";
 // API Configuration
 const API_BASE_URL = 'http://localhost:8080';
 
-
-
-// API service functions
 const marriagePlanAPI = {
-
-
     async getAllPlans(familyProfileId) {
         const response = await fetch(`${API_BASE_URL}/api/marriage-plans/family/${familyProfileId}`);
         if (!response.ok) throw new Error('Failed to fetch plans');
@@ -56,6 +51,162 @@ const marriagePlanAPI = {
     }
 };
 
+// Enhanced Prediction API utility
+const predictionAPI = {
+    async generatePredictions(familyProfileId) {
+        try {
+            console.log('Generating predictions for familyProfileId:', familyProfileId);
+            const response = await axios.get(`${API_BASE_URL}/api/predictions/generate/${familyProfileId}`, {
+                withCredentials: true
+            });
+            console.log('Predictions generated successfully:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('Error generating predictions:', error);
+            throw error;
+        }
+    }
+};
+
+// Dual Progress Bar Component
+const DualProgressBar = ({ plan }) => {
+    // Calculate years to goal
+    const currentYear = new Date().getFullYear();
+    const targetYear = parseInt(plan.estimatedYear) || currentYear + 1;
+    const years = Math.max(0, targetYear - currentYear);
+
+    const currentSavings = parseFloat(plan.currentSavings) || 0;
+    const monthlyContrib = parseFloat(plan.monthlyContribution) || 0;
+    const inflationRate = parseFloat(plan.inflationRate) || 6;
+    const estimatedTotal = parseFloat(plan.estimatedTotalCost) || 0;
+
+    // Inflation-adjusted target
+    const inflatedCost = estimatedTotal * Math.pow(1 + inflationRate / 100, years);
+
+    // Progress 1: Current Savings Only
+    const progressCurrent = inflatedCost > 0 ? Math.min(100, (currentSavings / inflatedCost) * 100) : 0;
+
+    // Progress 2: Projected (Current + Future Contributions)
+    let futureValueMonthlyContributions = 0;
+    if (monthlyContrib > 0 && inflationRate > 0) {
+        const monthlyRate = inflationRate / 100 / 12;
+        const totalMonths = years * 12;
+        futureValueMonthlyContributions = monthlyContrib *
+            ((Math.pow(1 + monthlyRate, totalMonths) - 1) / monthlyRate);
+    } else if (monthlyContrib > 0) {
+        futureValueMonthlyContributions = monthlyContrib * years * 12;
+    }
+    const futureValueCurrentSavings = currentSavings * Math.pow(1 + inflationRate / 100, years);
+    const totalFutureValue = futureValueCurrentSavings + futureValueMonthlyContributions;
+    const progressProjected = inflatedCost > 0 ? Math.min(100, (totalFutureValue / inflatedCost) * 100) : 0;
+
+    // Get progress status for current savings
+    const getCurrentStatus = (progress) => {
+        if (progress >= 80) return { text: 'Excellent', icon: '🎯', color: 'from-emerald-500 to-emerald-400' };
+        if (progress >= 60) return { text: 'Good', icon: '📈', color: 'from-blue-500 to-blue-400' };
+        if (progress >= 40) return { text: 'Fair', icon: '⚡', color: 'from-yellow-500 to-yellow-400' };
+        return { text: 'Needs Attention', icon: '⚠️', color: 'from-red-500 to-red-400' };
+    };
+
+    // Get progress status for projected savings
+    const getProjectedStatus = (progress) => {
+        if (progress >= 100) return { text: 'On Track', icon: '✅', color: 'from-emerald-500 to-emerald-400' };
+        if (progress >= 80) return { text: 'Good Pace', icon: '🚀', color: 'from-blue-500 to-blue-400' };
+        if (progress >= 60) return { text: 'Moderate', icon: '📊', color: 'from-yellow-500 to-yellow-400' };
+        return { text: 'Behind Target', icon: '🔴', color: 'from-red-500 to-red-400' };
+    };
+
+    const currentStatus = getCurrentStatus(progressCurrent);
+    const projectedStatus = getProjectedStatus(progressProjected);
+
+    return (
+        <div className="space-y-6">
+            {/* Current Savings Progress */}
+            <div className="bg-white/5 rounded-lg p-4">
+                <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center space-x-2">
+                        <span className="text-lg">{currentStatus.icon}</span>
+                        <span className="text-gray-300 font-medium">Current Savings Progress</span>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-white font-bold text-lg">{progressCurrent.toFixed(1)}%</p>
+                        <p className="text-gray-400 text-xs">{currentStatus.text}</p>
+                    </div>
+                </div>
+
+                <div className="relative mb-2">
+                    <div className="w-full bg-gray-700 rounded-full h-4 shadow-inner">
+                        <div
+                            className={`bg-gradient-to-r ${currentStatus.color} h-4 rounded-full transition-all duration-1000 ease-out relative overflow-hidden`}
+                            style={{ width: `${progressCurrent}%` }}
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="text-xs text-gray-400">
+                    Saved: ₹{(currentSavings / 100000).toFixed(2)}L / Target: ₹{(inflatedCost / 100000).toFixed(2)}L
+                </div>
+            </div>
+
+            {/* Projected Progress (Current + Future Contributions) */}
+            <div className="bg-white/5 rounded-lg p-4">
+                <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center space-x-2">
+                        <span className="text-lg">{projectedStatus.icon}</span>
+                        <span className="text-gray-300 font-medium">Projected Progress (with future savings)</span>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-white font-bold text-lg">{progressProjected.toFixed(1)}%</p>
+                        <p className="text-gray-400 text-xs">{projectedStatus.text}</p>
+                    </div>
+                </div>
+
+                <div className="relative mb-2">
+                    <div className="w-full bg-gray-700 rounded-full h-4 shadow-inner">
+                        <div
+                            className={`bg-gradient-to-r ${projectedStatus.color} h-4 rounded-full transition-all duration-1000 ease-out relative overflow-hidden`}
+                            style={{ width: `${Math.min(100, progressProjected)}%` }}
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
+                        </div>
+                    </div>
+
+                    {/* Progress milestones */}
+                    <div className="flex justify-between mt-1 text-xs text-gray-500">
+                        <span>0%</span>
+                        <span>25%</span>
+                        <span>50%</span>
+                        <span>75%</span>
+                        <span>100%</span>
+                    </div>
+                </div>
+
+                <div className="text-xs text-gray-400">
+                    Projected: ₹{(totalFutureValue / 100000).toFixed(2)}L / Target: ₹{(inflatedCost / 100000).toFixed(2)}L
+                </div>
+            </div>
+
+            {/* Progress Summary Cards */}
+            <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/5 rounded-lg p-3">
+                    <p className="text-gray-400 text-xs">Monthly Contribution</p>
+                    <p className="text-white font-semibold">
+                        ₹{monthlyContrib.toLocaleString()}
+                    </p>
+                </div>
+                <div className="bg-white/5 rounded-lg p-3">
+                    <p className="text-gray-400 text-xs">Years Remaining</p>
+                    <p className="text-white font-semibold">
+                        {years} {years === 1 ? 'year' : 'years'}
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // Form Modal Component
 const MarriagePlanModal = ({ isOpen, onClose, onSave, plan = null, familyProfileId }) => {
     const [formData, setFormData] = useState({
@@ -86,7 +237,6 @@ const MarriagePlanModal = ({ isOpen, onClose, onSave, plan = null, familyProfile
                 familyProfileId: plan.familyProfileId || familyProfileId
             });
         } else {
-            // Reset form for new plan with current familyProfileId
             setFormData({
                 planName: '',
                 forName: '',
@@ -307,6 +457,7 @@ export default function MarriagePage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPlan, setEditingPlan] = useState(null);
     const [familyProfileId, setFamilyProfileId] = useState(null);
+    const [predictionsLoading, setPredictionsLoading] = useState(false);
 
     // Get familyProfileId from localStorage
     useEffect(() => {
@@ -321,34 +472,38 @@ export default function MarriagePage() {
         }
     }, []);
 
-    // Add this useEffect after your existing ones (around line 570)
+    // Enhanced prediction generation function
+    const generatePredictions = async (familyId = null) => {
+        const targetFamilyId = familyId || familyProfileId;
+
+        if (!targetFamilyId) {
+            console.error('Family profile ID not available for predictions');
+            return;
+        }
+
+        try {
+            setPredictionsLoading(true);
+            await predictionAPI.generatePredictions(targetFamilyId);
+        } catch (error) {
+            console.error('Failed to generate predictions:', error);
+        } finally {
+            setPredictionsLoading(false);
+        }
+    };
+
+    // Generate predictions on page load
     useEffect(() => {
-        const generatePredictions = async () => {
-            const familyProfileId = localStorage.getItem('familyProfileId');
+        if (familyProfileId) {
+            generatePredictions(familyProfileId);
+        }
+    }, [familyProfileId]);
 
-            if (!familyProfileId) {
-                console.error('Family profile ID not found in localStorage');
-                return;
-            }
-
-            // Only run if we have marriage plans
-            if (!marriagePlans || marriagePlans.length === 0) {
-                return;
-            }
-
-            try {
-                const response = await axios.get(`http://localhost:8080/api/predictions/generate/${familyProfileId}`, {
-                    withCredentials: true
-                });
-                console.log('Predictions generated successfully:', response.data);
-            } catch (error) {
-                console.error('Error generating predictions:', error);
-            }
-        };
-
-        generatePredictions();
-    }, [marriagePlans]); // Use marriagePlans instead of familyData.educationPlans
-
+    // Generate predictions whenever marriage plans change
+    useEffect(() => {
+        if (marriagePlans.length > 0 && familyProfileId) {
+            generatePredictions(familyProfileId);
+        }
+    }, [marriagePlans, familyProfileId]);
 
     // Load plans when familyProfileId is available
     useEffect(() => {
@@ -389,6 +544,9 @@ export default function MarriagePage() {
             console.log('Plan data:', planData);
             const newPlan = await marriagePlanAPI.createPlan(familyProfileId, planData);
             setMarriagePlans(prev => [...prev, newPlan]);
+
+            // Generate predictions immediately after creating a plan
+            await generatePredictions(familyProfileId);
         } catch (err) {
             setError('Failed to create plan');
             console.error('Error creating plan:', err);
@@ -404,6 +562,9 @@ export default function MarriagePage() {
             setMarriagePlans(prev => prev.map(plan =>
                 plan.id === editingPlan.id ? updatedPlan : plan
             ));
+
+            // Generate predictions immediately after updating a plan
+            await generatePredictions(familyProfileId);
         } catch (err) {
             setError('Failed to update plan');
             console.error('Error updating plan:', err);
@@ -420,6 +581,9 @@ export default function MarriagePage() {
             console.log('Deleting plan:', planId);
             await marriagePlanAPI.deletePlan(planId);
             setMarriagePlans(prev => prev.filter(plan => plan.id !== planId));
+
+            // Generate predictions immediately after deleting a plan
+            await generatePredictions(familyProfileId);
         } catch (err) {
             setError('Failed to delete plan');
             console.error('Error deleting plan:', err);
@@ -443,6 +607,11 @@ export default function MarriagePage() {
     const closeModal = () => {
         setIsModalOpen(false);
         setEditingPlan(null);
+    };
+
+    // Manual refresh function for predictions
+    const refreshPredictions = async () => {
+        await generatePredictions(familyProfileId);
     };
 
     // Show loading if familyProfileId is not yet loaded
@@ -469,7 +638,7 @@ export default function MarriagePage() {
 
             {/* Main Content */}
             <div className="max-w-7xl mx-auto px-6 md:px-16 lg:px-24 py-8">
-                {/* Header */}
+                {/* Header - Family ID Removed */}
                 <div className="flex justify-between items-center mb-8">
                     <div>
                         <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
@@ -479,17 +648,34 @@ export default function MarriagePage() {
                         <p className="text-gray-300 text-lg">
                             Plan and track your family's marriage expenses
                         </p>
-                        <p className="text-gray-400 text-sm">
-                            Family Profile ID: {familyProfileId}
-                        </p>
+                        {predictionsLoading && (
+                            <div className="flex items-center mt-2">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-400 mr-2"></div>
+                                <p className="text-emerald-400 text-sm">Updating predictions...</p>
+                            </div>
+                        )}
                     </div>
-                    <button
-                        onClick={openCreateModal}
-                        className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-lg px-7 py-3 rounded-lg transition-colors shadow-lg flex items-center"
-                    >
-                        <Plus className="mr-2" size={20} />
-                        Add Plan
-                    </button>
+                    <div className="flex space-x-3">
+                        <button
+                            onClick={refreshPredictions}
+                            disabled={predictionsLoading}
+                            className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-5 py-3 rounded-lg transition-colors shadow-lg flex items-center disabled:opacity-50"
+                        >
+                            {predictionsLoading ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            ) : (
+                                <Target className="mr-2" size={18} />
+                            )}
+                            Refresh Predictions
+                        </button>
+                        <button
+                            onClick={openCreateModal}
+                            className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-lg px-7 py-3 rounded-lg transition-colors shadow-lg flex items-center"
+                        >
+                            <Plus className="mr-2" size={20} />
+                            Add Plan
+                        </button>
+                    </div>
                 </div>
 
                 {/* Error Message */}
@@ -574,7 +760,6 @@ export default function MarriagePage() {
                 ) : (
                     <div className="space-y-6">
                         {marriagePlans.map(plan => {
-                            const progress = getProgress(plan);
                             const shortfall = getShortfall(plan);
 
                             return (
@@ -639,23 +824,12 @@ export default function MarriagePage() {
                                         </div>
                                     </div>
 
-                                    {/* Progress Section */}
-                                    <div className="mb-4">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <p className="text-gray-300 font-medium">Savings Progress</p>
-                                            <p className="text-white font-semibold">{progress.toFixed(1)}%</p>
-                                        </div>
-                                        <div className="w-full bg-gray-700 rounded-full h-3">
-                                            <div
-                                                className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-3 rounded-full transition-all duration-500"
-                                                style={{ width: `${Math.min(100, progress)}%` }}
-                                            />
-                                        </div>
-                                    </div>
+                                    {/* Dual Progress Bars */}
+                                    <DualProgressBar plan={plan} />
 
                                     {/* Shortfall Alert */}
                                     {shortfall > 0 && (
-                                        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+                                        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mt-6">
                                             <div className="flex items-center space-x-2 mb-2">
                                                 <Target className="text-red-400" size={20} />
                                                 <p className="text-red-400 font-semibold">
@@ -686,41 +860,7 @@ export default function MarriagePage() {
     );
 }
 
-// Helper functions remain the same
-function getProgress(plan) {
-    const currentYear = new Date().getFullYear();
-    const targetYear = parseInt(plan.estimatedYear) || currentYear + 1;
-    const years = Math.max(0, targetYear - currentYear);
-
-    const currentSavings = parseFloat(plan.currentSavings) || 0;
-    const monthlyContrib = parseFloat(plan.monthlyContribution) || 0;
-    const inflationRate = parseFloat(plan.inflationRate) || 6;
-    const estimatedTotal = parseFloat(plan.estimatedTotalCost) || 0;
-
-    if (estimatedTotal <= 0) return 0;
-
-    if (years <= 0) {
-        return Math.min(100, (currentSavings / estimatedTotal) * 100);
-    }
-
-    const futureValueCurrentSavings = currentSavings * Math.pow(1 + inflationRate / 100, years);
-
-    let futureValueMonthlyContributions = 0;
-    if (monthlyContrib > 0 && inflationRate > 0) {
-        const monthlyRate = inflationRate / 100 / 12;
-        const totalMonths = years * 12;
-        futureValueMonthlyContributions = monthlyContrib *
-            ((Math.pow(1 + monthlyRate, totalMonths) - 1) / monthlyRate);
-    } else if (monthlyContrib > 0) {
-        futureValueMonthlyContributions = monthlyContrib * years * 12;
-    }
-
-    const totalFutureValue = futureValueCurrentSavings + futureValueMonthlyContributions;
-    const inflatedCost = estimatedTotal * Math.pow(1 + inflationRate / 100, years);
-
-    return Math.min(100, (totalFutureValue / inflatedCost) * 100);
-}
-
+// Helper function for shortfall calculation
 function getShortfall(plan) {
     const currentYear = new Date().getFullYear();
     const targetYear = parseInt(plan.estimatedYear) || currentYear + 1;

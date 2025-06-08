@@ -1,174 +1,222 @@
 package com.finwise.service;
 
-import com.finwise.entity.EducationPlan;
 import com.finwise.entity.FamilyProfile;
+import com.finwise.entity.EducationPlan;
 import com.finwise.entity.MarriagePlan;
-import com.finwise.repository.EducationPlanRepository;
 import com.finwise.repository.FamilyProfileRepository;
+import com.finwise.repository.EducationPlanRepository;
 import com.finwise.repository.MarriagePlanRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.*;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Year;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class PredictionService {
 
-    private final FamilyProfileRepository familyProfileRepository;
-    private final EducationPlanRepository educationPlanRepository;
-    private final MarriagePlanRepository marriagePlanRepository;
+    @Autowired
+    private RestTemplate restTemplate;
 
-    private final RestTemplate restTemplate = new RestTemplate();
-    private final String PREDICTION_SERVICE_URL = "http://localhost:5000/predict";
+    @Autowired
+    private FamilyProfileRepository familyProfileRepository;
 
-    public void generateAndSavePredictions(Long familyProfileId) {
+    @Autowired
+    private EducationPlanRepository educationPlanRepository;
+
+    @Autowired
+    private MarriagePlanRepository marriagePlanRepository;
+
+    @Value("${prediction.service.url}")
+    private String PREDICTION_SERVICE_URL;
+
+    @Value("${allocation.service.url}")
+    private String ALLOCATION_SERVICE_URL;
+
+    public void generateAndSaveOptimizedPredictions(Long familyProfileId) {
         try {
             FamilyProfile profile = familyProfileRepository.findById(familyProfileId)
                     .orElseThrow(() -> new RuntimeException("Family profile not found"));
 
             BigDecimal salary = profile.getMonthlyIncome() != null ? profile.getMonthlyIncome() : BigDecimal.ZERO;
             BigDecimal expenses = profile.getMonthlyExpenses() != null ? profile.getMonthlyExpenses() : BigDecimal.ZERO;
+            BigDecimal monthlySavings = salary.subtract(expenses);
 
-            System.out.println("Processing predictions for family profile ID: " + familyProfileId);
-            System.out.println("Salary: " + salary + ", Expenses: " + expenses);
+            if (monthlySavings.compareTo(BigDecimal.ZERO) <= 0) {
+                System.out.println("No available savings for allocation");
+                return;
+            }
 
-            // Get all education and marriage plans
+            // Get all plans
             List<EducationPlan> educationPlans = educationPlanRepository.findByChild_FamilyProfile_Id(familyProfileId);
             List<MarriagePlan> marriagePlans = marriagePlanRepository.findByFamilyProfile_Id(familyProfileId);
 
-            System.out.println("Found " + educationPlans.size() + " education plans and " + marriagePlans.size() + " marriage plans");
+            // Use intelligent allocation instead of individual processing
+            Map<String, BigDecimal> allocations = performIntelligentAllocation(
+                    educationPlans, marriagePlans, monthlySavings);
 
-            // Process education plans - iterate through each one
-            if (!educationPlans.isEmpty()) {
-                processEducationPlans(educationPlans, salary, expenses);
-            } else {
-                System.out.println("No education plans found for family profile ID: " + familyProfileId);
-            }
-
-            // Process marriage plans - iterate through each one
-            if (!marriagePlans.isEmpty()) {
-                processMarriagePlans(marriagePlans, salary, expenses);
-            } else {
-                System.out.println("No marriage plans found for family profile ID: " + familyProfileId);
-            }
+            // Apply allocations to plans
+            applyAllocationsToPlans(educationPlans, marriagePlans, allocations);
 
         } catch (Exception e) {
-            System.err.println("Error in generateAndSavePredictions: " + e.getMessage());
+            System.err.println("Error in generateAndSaveOptimizedPredictions: " + e.getMessage());
             e.printStackTrace();
-            throw new RuntimeException("Failed to generate predictions", e);
+            throw new RuntimeException("Failed to generate optimized predictions", e);
         }
     }
 
-    private void processEducationPlans(List<EducationPlan> educationPlans, BigDecimal salary, BigDecimal expenses) {
-        System.out.println("Processing " + educationPlans.size() + " education plans");
+    private Map<String, BigDecimal> performIntelligentAllocation(
+            List<EducationPlan> educationPlans,
+            List<MarriagePlan> marriagePlans,
+            BigDecimal totalSavings) {
 
-        // Iterate through each education plan
-        for (int i = 0; i < educationPlans.size(); i++) {
-            EducationPlan educationPlan = educationPlans.get(i);
-            try {
-                System.out.println("Processing education plan " + (i + 1) + "/" + educationPlans.size() +
-                        " - ID: " + educationPlan.getId());
+        // Prepare allocation request
+        Map<String, Object> allocationRequest = new HashMap<>();
+        allocationRequest.put("totalMonthlySavings", totalSavings.doubleValue());
+        allocationRequest.put("educationPlans", prepareEducationPlanData(educationPlans));
+        allocationRequest.put("marriagePlans", prepareMarriagePlanData(marriagePlans));
 
-                // Validate required fields
-                if (educationPlan.getEstimatedTotalCost() == null) {
-                    System.err.println("Education plan " + educationPlan.getId() + " has null estimated total cost, skipping");
-                    continue;
-                }
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
 
-                // Calculate months left until education starts
-                int monthsLeft = calculateMonthsLeft(educationPlan.getEstimatedStartYear());
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(allocationRequest, headers);
 
-                // Create request matching Python Flask API expectations EXACTLY
-                Map<String, Object> request = new HashMap<>();
-                request.put("modelType", "education");
-                request.put("salary", salary.doubleValue());
-                request.put("expenses", expenses.doubleValue());
-                request.put("estimatedTotalCost", educationPlan.getEstimatedTotalCost().doubleValue());
-                request.put("monthsLeft", monthsLeft);
+            ResponseEntity<Map> response = restTemplate.postForEntity(
+                    ALLOCATION_SERVICE_URL + "/allocate",
+                    entity,
+                    Map.class
+            );
 
-                System.out.println("Education prediction request " + (i + 1) + ": " + request);
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                return convertAllocationResponse(response.getBody());
+            }
+        } catch (Exception e) {
+            System.err.println("Allocation service failed, falling back to equal distribution: " + e.getMessage());
+        }
 
-                // Make prediction request
-                Map<String, Object> response = makePredictionRequest(request);
+        // Fallback to equal distribution
+        return performEqualAllocation(educationPlans, marriagePlans, totalSavings);
+    }
 
-                if (response != null && response.containsKey("monthlyContribution")) {
-                    BigDecimal monthlyContribution = new BigDecimal(response.get("monthlyContribution").toString());
+    private List<Map<String, Object>> prepareEducationPlanData(List<EducationPlan> plans) {
+        return plans.stream().map(plan -> {
+            Map<String, Object> planData = new HashMap<>();
+            planData.put("id", plan.getId());
+            planData.put("planName", plan.getPlanName());
+            // Fix: Use the exact field name expected by Python service
+            planData.put("estimated_total_cost", plan.getEstimatedTotalCost().doubleValue());
+            planData.put("current_savings", plan.getCurrentSavings().doubleValue());
+            planData.put("estimated_start_year", plan.getEstimatedStartYear());
+            planData.put("estimated_end_year", plan.getEstimatedEndYear());
+            planData.put("inflation_rate", plan.getInflationRate().doubleValue());
+            planData.put("monthsLeft", calculateMonthsLeft(plan.getEstimatedStartYear()));
+            planData.put("plan_type", "education");
+            return planData;
+        }).collect(Collectors.toList());
+    }
 
-                    // Update and save the education plan
-                    educationPlan.setMonthlyContribution(monthlyContribution);
-                    EducationPlan savedPlan = educationPlanRepository.save(educationPlan);
+    private List<Map<String, Object>> prepareMarriagePlanData(List<MarriagePlan> plans) {
+        return plans.stream().map(plan -> {
+            Map<String, Object> planData = new HashMap<>();
+            planData.put("id", plan.getId());
+            planData.put("planName", plan.getPlanName());
+            // Fix: Use the exact field name expected by Python service
+            planData.put("estimated_total_cost", plan.getEstimatedTotalCost().doubleValue());
+            planData.put("current_savings", plan.getCurrentSavings().doubleValue());
+            planData.put("estimated_year", plan.getEstimatedYear());
+            planData.put("inflation_rate", plan.getInflationRate().doubleValue());
+            planData.put("monthsLeft", calculateMonthsLeft(plan.getEstimatedYear()));
+            planData.put("plan_type", "marriage");
+            return planData;
+        }).collect(Collectors.toList());
+    }
 
-                    System.out.println("Successfully saved education plan " + savedPlan.getId() +
-                            " with monthly contribution: " + monthlyContribution);
-                } else {
-                    System.err.println("Invalid response for education plan " + educationPlan.getId());
-                }
 
-            } catch (Exception e) {
-                System.err.println("Error processing education plan " + educationPlan.getId() + ": " + e.getMessage());
-                e.printStackTrace();
-                // Continue with next plan instead of failing completely
+    @SuppressWarnings("unchecked")
+    private Map<String, BigDecimal> convertAllocationResponse(Map<String, Object> response) {
+        Map<String, BigDecimal> allocations = new HashMap<>();
+
+        if (response.containsKey("allocations")) {
+            Map<String, Object> allocationData = (Map<String, Object>) response.get("allocations");
+
+            for (Map.Entry<String, Object> entry : allocationData.entrySet()) {
+                String planId = entry.getKey();
+                BigDecimal amount = new BigDecimal(entry.getValue().toString());
+                allocations.put(planId, amount);
             }
         }
+
+        return allocations;
     }
 
-    private void processMarriagePlans(List<MarriagePlan> marriagePlans, BigDecimal salary, BigDecimal expenses) {
-        System.out.println("Processing " + marriagePlans.size() + " marriage plans");
+    private Map<String, BigDecimal> performEqualAllocation(
+            List<EducationPlan> educationPlans,
+            List<MarriagePlan> marriagePlans,
+            BigDecimal totalSavings) {
 
-        // Iterate through each marriage plan
-        for (int i = 0; i < marriagePlans.size(); i++) {
-            MarriagePlan marriagePlan = marriagePlans.get(i);
-            try {
-                System.out.println("Processing marriage plan " + (i + 1) + "/" + marriagePlans.size() +
-                        " - ID: " + marriagePlan.getId());
+        Map<String, BigDecimal> allocations = new HashMap<>();
+        int totalPlans = educationPlans.size() + marriagePlans.size();
 
-                // Validate required fields
-                if (marriagePlan.getEstimatedTotalCost() == null) {
-                    System.err.println("Marriage plan " + marriagePlan.getId() + " has null estimated total cost, skipping");
-                    continue;
-                }
+        if (totalPlans == 0) {
+            return allocations;
+        }
 
-                // Calculate months left until marriage
-                int monthsLeft = calculateMonthsLeft(marriagePlan.getEstimatedYear());
+        BigDecimal equalAmount = totalSavings.divide(
+                new BigDecimal(totalPlans),
+                2,
+                RoundingMode.HALF_UP
+        );
 
-                // Create request matching Python Flask API expectations EXACTLY
-                Map<String, Object> request = new HashMap<>();
-                request.put("modelType", "marriage");
-                request.put("salary", salary.doubleValue());
-                request.put("expenses", expenses.doubleValue());
-                request.put("estimatedTotalCost", marriagePlan.getEstimatedTotalCost().doubleValue());
-                request.put("monthsLeft", monthsLeft);
+        // Allocate to education plans
+        for (EducationPlan plan : educationPlans) {
+            allocations.put("education_" + plan.getId(), equalAmount);
+        }
 
-                System.out.println("Marriage prediction request " + (i + 1) + ": " + request);
+        // Allocate to marriage plans
+        for (MarriagePlan plan : marriagePlans) {
+            allocations.put("marriage_" + plan.getId(), equalAmount);
+        }
 
-                // Make prediction request
-                Map<String, Object> response = makePredictionRequest(request);
+        return allocations;
+    }
 
-                if (response != null && response.containsKey("monthlyContribution")) {
-                    BigDecimal monthlyContribution = new BigDecimal(response.get("monthlyContribution").toString());
+    private void applyAllocationsToPlans(
+            List<EducationPlan> educationPlans,
+            List<MarriagePlan> marriagePlans,
+            Map<String, BigDecimal> allocations) {
 
-                    // Update and save the marriage plan
-                    marriagePlan.setMonthlyContribution(monthlyContribution);
-                    MarriagePlan savedPlan = marriagePlanRepository.save(marriagePlan);
+        // Apply to education plans
+        for (EducationPlan plan : educationPlans) {
+            String key = "education_" + plan.getId();
+            if (allocations.containsKey(key)) {
+                plan.setMonthlyContribution(allocations.get(key));
+                educationPlanRepository.save(plan);
+                System.out.println("Updated education plan " + plan.getId() +
+                        " with allocation: " + allocations.get(key));
+            }
+        }
 
-                    System.out.println("Successfully saved marriage plan " + savedPlan.getId() +
-                            " with monthly contribution: " + monthlyContribution);
-                } else {
-                    System.err.println("Invalid response for marriage plan " + marriagePlan.getId());
-                }
-
-            } catch (Exception e) {
-                System.err.println("Error processing marriage plan " + marriagePlan.getId() + ": " + e.getMessage());
-                e.printStackTrace();
-                // Continue with next plan instead of failing completely
+        // Apply to marriage plans
+        for (MarriagePlan plan : marriagePlans) {
+            String key = "marriage_" + plan.getId();
+            if (allocations.containsKey(key)) {
+                plan.setMonthlyContribution(allocations.get(key));
+                marriagePlanRepository.save(plan);
+                System.out.println("Updated marriage plan " + plan.getId() +
+                        " with allocation: " + allocations.get(key));
             }
         }
     }
@@ -186,77 +234,5 @@ public class PredictionService {
         }
 
         return monthsLeft;
-    }
-
-    private Map<String, Object> makePredictionRequest(Map<String, Object> requestData) {
-        try {
-            // Validate request data before sending
-            validateRequestData(requestData);
-
-            // Set proper headers
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
-
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestData, headers);
-
-            System.out.println("Making request to: " + PREDICTION_SERVICE_URL);
-            System.out.println("Request payload: " + requestData);
-
-            // Make the request
-            ResponseEntity<Map> response = restTemplate.postForEntity(
-                    PREDICTION_SERVICE_URL,
-                    entity,
-                    Map.class
-            );
-
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                System.out.println("Prediction response: " + response.getBody());
-                return response.getBody();
-            } else {
-                System.err.println("Unexpected response status: " + response.getStatusCode());
-                return null;
-            }
-
-        } catch (HttpClientErrorException e) {
-            System.err.println("HTTP Error: " + e.getStatusCode());
-            System.err.println("Response Body: " + e.getResponseBodyAsString());
-            System.err.println("Request that failed: " + requestData);
-            throw new RuntimeException("Prediction service failed: " + e.getMessage());
-        } catch (Exception e) {
-            System.err.println("Unexpected error making prediction request: " + e.getMessage());
-            System.err.println("Request that failed: " + requestData);
-            throw new RuntimeException("Failed to make prediction request", e);
-        }
-    }
-
-    private void validateRequestData(Map<String, Object> requestData) {
-        String[] requiredFields = {"modelType", "salary", "expenses", "estimatedTotalCost", "monthsLeft"};
-
-        for (String field : requiredFields) {
-            if (!requestData.containsKey(field) || requestData.get(field) == null) {
-                throw new IllegalArgumentException("Missing required field: " + field);
-            }
-        }
-
-        // Validate modelType
-        String modelType = (String) requestData.get("modelType");
-        if (!"education".equals(modelType) && !"marriage".equals(modelType)) {
-            throw new IllegalArgumentException("Invalid modelType: " + modelType + ". Must be 'education' or 'marriage'");
-        }
-
-        // Validate numeric fields
-        try {
-            double salary = ((Number) requestData.get("salary")).doubleValue();
-            double expenses = ((Number) requestData.get("expenses")).doubleValue();
-            double cost = ((Number) requestData.get("estimatedTotalCost")).doubleValue();
-            int months = ((Number) requestData.get("monthsLeft")).intValue();
-
-            if (salary < 0 || expenses < 0 || cost <= 0 || months <= 0) {
-                throw new IllegalArgumentException("Invalid numeric values in request data");
-            }
-        } catch (ClassCastException | NumberFormatException e) {
-            throw new IllegalArgumentException("Invalid numeric format in request data");
-        }
     }
 }

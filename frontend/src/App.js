@@ -9,6 +9,7 @@ import MarriagePage from './components/Marriage/MarriagePage';
 import InvestmentPage from './components/Investment/InvestmentPage';
 import Login from './components/Login';
 import Register from './components/Registration'
+import InvestmentOptions from "./components/Investment/InvestmentOptionsPage";
 
 
 
@@ -24,6 +25,7 @@ function App() {
                 <Route path="/Education" element={<EducationPage />} />
                 <Route path="/marriage" element={<MarriagePage />} />
                 <Route path="/investment" element={<InvestmentPage />} />
+                <Route path="/investment-options" element={<InvestmentOptions />} />
                 <Route path="/login" element={<Login/>} />
                 <Route path="/register" element={<Register/>}/>
             </Routes>

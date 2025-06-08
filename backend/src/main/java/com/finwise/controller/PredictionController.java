@@ -18,7 +18,7 @@ public class PredictionController {
 
     @GetMapping("/generate/{familyProfileId}")
     public ResponseEntity<String> generatePredictionsForUser(@PathVariable Long familyProfileId) {
-        predictionService.generateAndSavePredictions(familyProfileId);
+        predictionService.generateAndSaveOptimizedPredictions(familyProfileId);
         return ResponseEntity.ok("Predictions generated and stored successfully.");
     }
 }
