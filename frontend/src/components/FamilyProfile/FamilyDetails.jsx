@@ -95,7 +95,7 @@ const FamilyDetails = () => {
 
             // Redirect to dashboard after success
             setTimeout(() => {
-                navigate('/dashboard');
+                navigate('/auth/callback');
             }, 2000);
 
         } catch (error) {
