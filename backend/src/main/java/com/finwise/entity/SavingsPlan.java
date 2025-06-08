@@ -36,6 +36,5 @@ public class SavingsPlan {
     @JoinColumn(name = "family_profile_id", nullable = false)
     private FamilyProfile familyProfile;
 
-    @OneToMany(mappedBy = "savingsPlan", cascade = CascadeType.ALL)
-    private List<Investment> investments;
+
 }

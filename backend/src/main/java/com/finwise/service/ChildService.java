@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.util.ReflectionUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.Field;
 import java.util.List;
@@ -17,6 +18,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class ChildService {
 
     private final ChildRepository childRepository;
@@ -49,9 +51,16 @@ public class ChildService {
         Child existing = childRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Child not found"));
 
-        modelMapper.map(dto, existing);
+        // Preserve family profile relationship
+        FamilyProfile currentFamily = existing.getFamilyProfile();
 
-        if (!existing.getFamilyProfile().getId().equals(dto.getFamilyProfileId())) {
+        // Update basic fields manually to preserve relationships
+        existing.setName(dto.getName());
+        existing.setDateOfBirth(dto.getDateOfBirth());
+        existing.setCurrentEducationLevel(dto.getCurrentEducationLevel());
+
+        // Update family profile only if changed
+        if (dto.getFamilyProfileId() != null && !currentFamily.getId().equals(dto.getFamilyProfileId())) {
             FamilyProfile newFamily = familyProfileRepository.findById(dto.getFamilyProfileId())
                     .orElseThrow(() -> new RuntimeException("FamilyProfile not found"));
             existing.setFamilyProfile(newFamily);
@@ -66,7 +75,10 @@ public class ChildService {
 
     private ChildDTO convertToDTO(Child child) {
         ChildDTO dto = modelMapper.map(child, ChildDTO.class);
-        dto.setFamilyProfileId(child.getFamilyProfile().getId());
+        // Ensure familyProfileId is properly set
+        if (child.getFamilyProfile() != null) {
+            dto.setFamilyProfileId(child.getFamilyProfile().getId());
+        }
         return dto;
     }
 
@@ -74,15 +86,30 @@ public class ChildService {
         Child existingChild = childRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Child not found"));
 
+        // Preserve original family profile
+        FamilyProfile originalFamily = existingChild.getFamilyProfile();
+
         updates.forEach((field, fieldValue) -> {
-            Field fieldtobeupdated = ReflectionUtils.findRequiredField(Child.class,field);
-            if (field != null) {
-                fieldtobeupdated.setAccessible(true);
-                ReflectionUtils.setField(fieldtobeupdated, existingChild, fieldValue);
+            if (field.equals("familyProfileId") && fieldValue != null) {
+                Long familyProfileId = Long.valueOf(fieldValue.toString());
+                FamilyProfile newFamily = familyProfileRepository.findById(familyProfileId)
+                        .orElseThrow(() -> new RuntimeException("FamilyProfile not found"));
+                existingChild.setFamilyProfile(newFamily);
+            } else {
+                Field fieldToBeUpdated = ReflectionUtils.findRequiredField(Child.class, field);
+                if (fieldToBeUpdated != null) {
+                    fieldToBeUpdated.setAccessible(true);
+                    ReflectionUtils.setField(fieldToBeUpdated, existingChild, fieldValue);
+                }
             }
         });
 
+        // Ensure family profile is not null
+        if (existingChild.getFamilyProfile() == null) {
+            existingChild.setFamilyProfile(originalFamily);
+        }
+
         Child saved = childRepository.save(existingChild);
-        return modelMapper.map(saved, ChildDTO.class);
+        return convertToDTO(saved);
     }
 }

@@ -46,7 +46,7 @@ public class EducationPlanService {
         plan.setFamilyProfile(familyProfile);
         plan.setChild(child);
 
-        // Calculate inflation adjusted cost
+// Calculate inflation adjusted cost
         plan.setInflationAdjustedCost(calculateInflationAdjustedCost(
                 plan.getEstimatedTotalCost(),
                 plan.getEstimatedStartYear() - java.time.LocalDate.now().getYear(),
@@ -76,12 +76,41 @@ public class EducationPlanService {
         EducationPlan existing = educationPlanRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Education plan not found"));
 
-        dto.setId(id);
-        modelMapper.map(dto, existing);
+        // Update fields manually
+        existing.setPlanName(dto.getPlanName());
+        existing.setEducationLevel(dto.getEducationLevel());
+        existing.setInstitutionType(dto.getInstitutionType());
+        existing.setEstimatedStartYear(dto.getEstimatedStartYear());
+        existing.setEstimatedEndYear(dto.getEstimatedEndYear());
+        existing.setEstimatedTotalCost(dto.getEstimatedTotalCost());
+        existing.setCurrentSavings(dto.getCurrentSavings());
+        existing.setMonthlyContribution(dto.getMonthlyContribution());
+        existing.setInflationRate(dto.getInflationRate());
+        existing.setNotes(dto.getNotes());
+
+        // CRITICAL: Always update the child relationship
+        if (dto.getChildId() != null) {
+            Child child = childRepository.findById(dto.getChildId())
+                    .orElseThrow(() -> new RuntimeException("Child not found"));
+            existing.setChild(child);
+        }
+
         // Recalculate inflation adjusted cost
-        dto.setId(id);
+        existing.setInflationAdjustedCost(calculateInflationAdjustedCost(
+                existing.getEstimatedTotalCost(),
+                existing.getEstimatedStartYear() - java.time.LocalDate.now().getYear(),
+                existing.getInflationRate()
+        ));
+
         EducationPlan updated = educationPlanRepository.save(existing);
-        return modelMapper.map(updated, EducationPlanDTO.class);
+        return convertToDTO(updated);
+    }
+    private EducationPlanDTO convertToDTO(EducationPlan plan) {
+        EducationPlanDTO dto = modelMapper.map(plan, EducationPlanDTO.class);
+        if (plan.getChild() != null) {
+            dto.setChildId(plan.getChild().getId());
+        }
+        return dto;
     }
 
     public void deleteEducationPlan(Long id) {
@@ -112,7 +141,7 @@ public class EducationPlanService {
             }
         });
 
-        // Recalculate inflation adjusted cost if relevant fields were updated
+// Recalculate inflation adjusted cost if relevant fields were updated
         if (updates.containsKey("estimatedTotalCost") || updates.containsKey("estimatedStartYear") || updates.containsKey("inflationRate")) {
             plan.setInflationAdjustedCost(calculateInflationAdjustedCost(
                     plan.getEstimatedTotalCost(),
