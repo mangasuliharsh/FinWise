@@ -46,6 +46,6 @@ public class EducationPlan {
     }
 
     public FamilyProfile getFamilyProfile() {
-        return null;
+        return this.child.getFamilyProfile();
     }
 }

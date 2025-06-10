@@ -237,6 +237,13 @@ const DynamicNavbar = () => {
                     <PieChart size={18}/>
                     <span>Investment Options</span>
                 </button>
+                <button
+                    onClick={() => navigate('/report')}
+                    className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
+                >
+                    <PieChart size={18}/>
+                    <span>Reports</span>
+                </button>
             </div>
 
             {/* Right Side - User Info and Actions */}
@@ -314,15 +321,6 @@ const DynamicNavbar = () => {
                     )}
                 </div>
 
-                {/* Settings */}
-                <button
-                    className="p-2 rounded-full hover:bg-white/5 transition-colors"
-                    onClick={() => navigate('/settings')}
-                >
-                    <Settings size={20} className="text-gray-300" />
-                </button>
-
-                {/* User Profile Section */}
                 <div className="relative dropdown-container">
                     <button
                         className="flex items-center space-x-3 hover:bg-white/5 rounded-lg p-2 transition-colors"
@@ -444,22 +442,12 @@ const DynamicNavbar = () => {
                                 <button
                                     className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors flex items-center space-x-2"
                                     onClick={() => {
-                                        navigate('/family-details');
+                                        navigate('/updateFamilyDetails');
                                         setShowProfileMenu(false);
                                     }}
                                 >
                                     <Users size={16} />
                                     <span>Edit Family Profile</span>
-                                </button>
-                                <button
-                                    className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors flex items-center space-x-2"
-                                    onClick={() => {
-                                        navigate('/settings');
-                                        setShowProfileMenu(false);
-                                    }}
-                                >
-                                    <Settings size={16} />
-                                    <span>Settings</span>
                                 </button>
                                 <hr className="my-2 border-gray-200" />
                                 <button

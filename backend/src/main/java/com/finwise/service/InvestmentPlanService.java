@@ -1,14 +1,21 @@
 package com.finwise.service;
 
 import com.finwise.dto.InvestmentPlanDTO;
+import com.finwise.entity.FamilyProfile;
 import com.finwise.entity.InvestmentPlan;
+import com.finwise.entity.PlanTransaction;
 import com.finwise.exception.ResourceNotFoundException;
+import com.finwise.repository.FamilyProfileRepository;
 import com.finwise.repository.InvestmentPlanRepository;
 import lombok.RequiredArgsConstructor;
+import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.crypto.spec.OAEPParameterSpec;
+import javax.swing.text.html.Option;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -17,11 +24,15 @@ import java.util.stream.Collectors;
 public class InvestmentPlanService {
 
     private final InvestmentPlanRepository investmentPlanRepository;
+    private final PlanTransactionService planTransactionService;
+    private final FamilyProfileRepository familyProfileRepository;
+    private final ModelMapper modelMapper;
 
     public InvestmentPlanDTO createPlan(Long familyProfileId, InvestmentPlanDTO dto) {
         dto.setFamilyProfileId(familyProfileId);
         InvestmentPlan plan = convertToEntity(dto);
         InvestmentPlan savedPlan = investmentPlanRepository.save(plan);
+        planTransactionService.addTransaction(familyProfileId,"Investment",savedPlan.getId(),"Added",plan.getGoalAmount(),"");
         return convertToDTO(savedPlan);
     }
 
@@ -51,6 +62,7 @@ public class InvestmentPlanService {
         existingPlan.setNotes(dto.getNotes());
 
         InvestmentPlan savedPlan = investmentPlanRepository.save(existingPlan);
+        planTransactionService.addTransaction(savedPlan.getFamilyProfileId(), "Investment",savedPlan.getId(),"Updated",savedPlan.getGoalAmount(),"");
         return convertToDTO(savedPlan);
     }
 
@@ -58,7 +70,10 @@ public class InvestmentPlanService {
         if (!investmentPlanRepository.existsById(id)) {
             throw new ResourceNotFoundException("Investment plan not found with id: " + id);
         }
+        Optional<InvestmentPlan> optionalInvestmentPlan = investmentPlanRepository.findById(id);
+        InvestmentPlan savedPlan = optionalInvestmentPlan.get();
         investmentPlanRepository.deleteById(id);
+        planTransactionService.addTransaction(savedPlan.getFamilyProfileId(), "Investment",savedPlan.getId(),"Deleted",savedPlan.getGoalAmount(),"");
     }
 
     private InvestmentPlanDTO convertToDTO(InvestmentPlan plan) {
@@ -87,5 +102,13 @@ public class InvestmentPlanService {
         plan.setNotes(dto.getNotes());
         plan.setFamilyProfileId(dto.getFamilyProfileId());
         return plan;
+    }
+
+    public List<InvestmentPlanDTO> getPlansByUserId(Long userId) {
+        FamilyProfile familyProfile = familyProfileRepository.findByUser_Id(userId);
+        List<InvestmentPlan> investmentPlans = investmentPlanRepository.findByFamilyProfileId(familyProfile.getId());
+        return investmentPlans.stream()
+                .map(investmentPlan -> modelMapper.map(investmentPlan, InvestmentPlanDTO.class))
+                .collect(Collectors.toList());
     }
 }

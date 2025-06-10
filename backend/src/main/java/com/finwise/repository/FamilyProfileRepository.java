@@ -10,4 +10,6 @@ import org.springframework.stereotype.Repository;
 public interface FamilyProfileRepository extends JpaRepository<FamilyProfile,Long> {
     FamilyProfile findFamilyProfileByUserId(Long userId);
     FamilyProfile findByUser(User user);
+
+    FamilyProfile findByUser_Id(Long userId);
 }

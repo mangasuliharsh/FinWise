@@ -15,4 +15,6 @@ public interface MarriagePlanRepository extends JpaRepository<MarriagePlan,Long>
     List<MarriagePlan> findByFamilyProfile(FamilyProfile familyProfile);
 
     List<MarriagePlan> findByFamilyProfile_Id(Long familyProfileId);
+
+    List<MarriagePlan> findByFamilyProfile_User_Id(Long familyProfileUserId);
 }

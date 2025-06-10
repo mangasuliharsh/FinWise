@@ -10,6 +10,9 @@ import InvestmentPage from './components/Investment/InvestmentPage';
 import Login from './components/Login';
 import Register from './components/Registration'
 import InvestmentOptions from "./components/Investment/InvestmentOptionsPage";
+import Profile from "./components/Profile";
+import UpdateFamilyProfile from "./components/FamilyProfile/UpdateFamilyDetails";
+import Report from "./components/Report"
 
 
 
@@ -28,6 +31,9 @@ function App() {
                 <Route path="/investment-options" element={<InvestmentOptions />} />
                 <Route path="/login" element={<Login/>} />
                 <Route path="/register" element={<Register/>}/>
+                <Route path="/profile" element={<Profile/>}/>
+                <Route path="/updateFamilyDetails" element={<UpdateFamilyProfile/>}/>
+                <Route path="/report" element={<Report/>}/>
             </Routes>
         </Router>
     );

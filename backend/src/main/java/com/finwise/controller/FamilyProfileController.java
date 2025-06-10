@@ -27,9 +27,6 @@ public class FamilyProfileController {
         this.util = util;
     }
 
-
-
-
     @GetMapping("/{id}")
     public ResponseEntity<FamilyProfileDTO> getProfileById(@PathVariable Long id) {
         Optional<FamilyProfileDTO> profile = familyProfileService.getFamilyProfileById(id);
@@ -61,6 +58,7 @@ public class FamilyProfileController {
         familyProfileService.deleteFamilyProfile(id);
         return ResponseEntity.noContent().build();
     }
+
     @PatchMapping("/{id}")
     public ResponseEntity<FamilyProfileDTO> updatePartialFamilyProfile(
             @PathVariable Long id,

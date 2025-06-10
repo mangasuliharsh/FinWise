@@ -46,60 +46,141 @@ const investmentAPI = {
     }
 };
 
-// Progress and shortfall calculation
-function getProgress(plan) {
+// Dual Progress Bar Component
+const DualProgressBar = ({ plan }) => {
+    // Calculate years to goal
     const currentYear = new Date().getFullYear();
     const targetYear = parseInt(plan.targetYear) || currentYear + 1;
     const years = Math.max(0, targetYear - currentYear);
+
     const currentSavings = parseFloat(plan.currentSavings) || 0;
     const monthlyContrib = parseFloat(plan.monthlyContribution) || 0;
     const expectedReturn = parseFloat(plan.expectedReturn) || 8;
     const goalAmount = parseFloat(plan.goalAmount) || 0;
 
-    if (goalAmount <= 0) return 0;
-    if (years <= 0) return Math.min(100, (currentSavings / goalAmount) * 100);
+    // Progress 1: Current Savings Only
+    const progressCurrent = goalAmount > 0 ? Math.min(100, (currentSavings / goalAmount) * 100) : 0;
 
-    const futureValueCurrent = currentSavings * Math.pow(1 + expectedReturn / 100, years);
-    let futureValueMonthly = 0;
-
+    // Progress 2: Projected (Current + Future Contributions)
+    let futureValueMonthlyContributions = 0;
     if (monthlyContrib > 0 && expectedReturn > 0) {
         const monthlyRate = expectedReturn / 100 / 12;
         const totalMonths = years * 12;
-        futureValueMonthly = monthlyContrib * ((Math.pow(1 + monthlyRate, totalMonths) - 1) / monthlyRate);
+        futureValueMonthlyContributions = monthlyContrib *
+            ((Math.pow(1 + monthlyRate, totalMonths) - 1) / monthlyRate);
     } else if (monthlyContrib > 0) {
-        futureValueMonthly = monthlyContrib * years * 12;
+        futureValueMonthlyContributions = monthlyContrib * years * 12;
     }
+    const futureValueCurrentSavings = currentSavings * Math.pow(1 + expectedReturn / 100, years);
+    const totalFutureValue = futureValueCurrentSavings + futureValueMonthlyContributions;
+    const progressProjected = goalAmount > 0 ? Math.min(100, (totalFutureValue / goalAmount) * 100) : 0;
 
-    const totalFutureValue = futureValueCurrent + futureValueMonthly;
-    return Math.min(100, (totalFutureValue / goalAmount) * 100);
-}
+    // Get progress status for current savings
+    const getCurrentStatus = (progress) => {
+        if (progress >= 80) return { text: 'Excellent', icon: '🎯', color: 'from-emerald-500 to-emerald-400' };
+        if (progress >= 60) return { text: 'Good', icon: '📈', color: 'from-blue-500 to-blue-400' };
+        if (progress >= 40) return { text: 'Fair', icon: '⚡', color: 'from-yellow-500 to-yellow-400' };
+        return { text: 'Needs Attention', icon: '⚠️', color: 'from-red-500 to-red-400' };
+    };
 
-function getShortfall(plan) {
-    const currentYear = new Date().getFullYear();
-    const targetYear = parseInt(plan.targetYear) || currentYear + 1;
-    const years = Math.max(0, targetYear - currentYear);
-    const currentSavings = parseFloat(plan.currentSavings) || 0;
-    const monthlyContrib = parseFloat(plan.monthlyContribution) || 0;
-    const expectedReturn = parseFloat(plan.expectedReturn) || 8;
-    const goalAmount = parseFloat(plan.goalAmount) || 0;
+    // Get progress status for projected savings
+    const getProjectedStatus = (progress) => {
+        if (progress >= 100) return { text: 'On Track', icon: '✅', color: 'from-emerald-500 to-emerald-400' };
+        if (progress >= 80) return { text: 'Good Pace', icon: '🚀', color: 'from-blue-500 to-blue-400' };
+        if (progress >= 60) return { text: 'Moderate', icon: '📊', color: 'from-yellow-500 to-yellow-400' };
+        return { text: 'Behind Target', icon: '🔴', color: 'from-red-500 to-red-400' };
+    };
 
-    if (goalAmount <= 0) return 0;
-    if (years <= 0) return Math.max(0, goalAmount - currentSavings);
+    const currentStatus = getCurrentStatus(progressCurrent);
+    const projectedStatus = getProjectedStatus(progressProjected);
 
-    const futureValueCurrent = currentSavings * Math.pow(1 + expectedReturn / 100, years);
-    let futureValueMonthly = 0;
+    return (
+        <div className="space-y-6">
+            {/* Current Savings Progress */}
+            <div className="bg-white/5 rounded-lg p-4">
+                <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center space-x-2">
+                        <span className="text-lg">{currentStatus.icon}</span>
+                        <span className="text-gray-300 font-medium">Current Savings Progress</span>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-white font-bold text-lg">{progressCurrent.toFixed(1)}%</p>
+                        <p className="text-gray-400 text-xs">{currentStatus.text}</p>
+                    </div>
+                </div>
 
-    if (monthlyContrib > 0 && expectedReturn > 0) {
-        const monthlyRate = expectedReturn / 100 / 12;
-        const totalMonths = years * 12;
-        futureValueMonthly = monthlyContrib * ((Math.pow(1 + monthlyRate, totalMonths) - 1) / monthlyRate);
-    } else if (monthlyContrib > 0) {
-        futureValueMonthly = monthlyContrib * years * 12;
-    }
+                <div className="relative mb-2">
+                    <div className="w-full bg-gray-700 rounded-full h-4 shadow-inner">
+                        <div
+                            className={`bg-gradient-to-r ${currentStatus.color} h-4 rounded-full transition-all duration-1000 ease-out relative overflow-hidden`}
+                            style={{ width: `${progressCurrent}%` }}
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
 
-    const totalFutureValue = futureValueCurrent + futureValueMonthly;
-    return Math.max(0, goalAmount - totalFutureValue);
-}
+                <div className="text-xs text-gray-400">
+                    Saved: ₹{(currentSavings / 100000).toFixed(2)}L / Target: ₹{(goalAmount / 100000).toFixed(2)}L
+                </div>
+            </div>
+
+            {/* Projected Progress (Current + Future Contributions) */}
+            <div className="bg-white/5 rounded-lg p-4">
+                <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center space-x-2">
+                        <span className="text-lg">{projectedStatus.icon}</span>
+                        <span className="text-gray-300 font-medium">Projected Progress (with future investments)</span>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-white font-bold text-lg">{progressProjected.toFixed(1)}%</p>
+                        <p className="text-gray-400 text-xs">{projectedStatus.text}</p>
+                    </div>
+                </div>
+
+                <div className="relative mb-2">
+                    <div className="w-full bg-gray-700 rounded-full h-4 shadow-inner">
+                        <div
+                            className={`bg-gradient-to-r ${projectedStatus.color} h-4 rounded-full transition-all duration-1000 ease-out relative overflow-hidden`}
+                            style={{ width: `${Math.min(100, progressProjected)}%` }}
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
+                        </div>
+                    </div>
+
+                    {/* Progress milestones */}
+                    <div className="flex justify-between mt-1 text-xs text-gray-500">
+                        <span>0%</span>
+                        <span>25%</span>
+                        <span>50%</span>
+                        <span>75%</span>
+                        <span>100%</span>
+                    </div>
+                </div>
+
+                <div className="text-xs text-gray-400">
+                    Projected: ₹{(totalFutureValue / 100000).toFixed(2)}L / Target: ₹{(goalAmount / 100000).toFixed(2)}L
+                </div>
+            </div>
+
+            {/* Progress Summary Cards */}
+            <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/5 rounded-lg p-3">
+                    <p className="text-gray-400 text-xs">Monthly Contribution</p>
+                    <p className="text-white font-semibold">
+                        ₹{monthlyContrib.toLocaleString()}
+                    </p>
+                </div>
+                <div className="bg-white/5 rounded-lg p-3">
+                    <p className="text-gray-400 text-xs">Years Remaining</p>
+                    <p className="text-white font-semibold">
+                        {years} {years === 1 ? 'year' : 'years'}
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 // Modal for Add/Edit Investment Plan
 const InvestmentPlanModal = ({ isOpen, onClose, onSave, plan = null, familyProfileId }) => {
@@ -170,7 +251,7 @@ const InvestmentPlanModal = ({ isOpen, onClose, onSave, plan = null, familyProfi
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-white/20">
+            <div className="bg-gray-800 rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold text-white">
                         {plan ? 'Edit Investment Plan' : 'Create Investment Plan'}
@@ -187,7 +268,7 @@ const InvestmentPlanModal = ({ isOpen, onClose, onSave, plan = null, familyProfi
                                 type="text"
                                 value={formData.planName}
                                 onChange={e => setFormData({ ...formData, planName: e.target.value })}
-                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-400"
+                                className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
                                 placeholder="e.g., Retirement Fund"
                                 required
                             />
@@ -201,7 +282,7 @@ const InvestmentPlanModal = ({ isOpen, onClose, onSave, plan = null, familyProfi
                                 onChange={e => setFormData({ ...formData, goalAmount: e.target.value })}
                                 min="1"
                                 step="0.01"
-                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"
+                                className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
                                 placeholder="1000000"
                                 required
                             />
@@ -215,7 +296,7 @@ const InvestmentPlanModal = ({ isOpen, onClose, onSave, plan = null, familyProfi
                                 onChange={e => setFormData({ ...formData, currentSavings: e.target.value })}
                                 min="0"
                                 step="0.01"
-                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"
+                                className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
                             />
                         </div>
                         <div>
@@ -226,7 +307,7 @@ const InvestmentPlanModal = ({ isOpen, onClose, onSave, plan = null, familyProfi
                                 onChange={e => setFormData({ ...formData, monthlyContribution: e.target.value })}
                                 min="0"
                                 step="0.01"
-                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"
+                                className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
                             />
                         </div>
                         <div>
@@ -237,7 +318,7 @@ const InvestmentPlanModal = ({ isOpen, onClose, onSave, plan = null, familyProfi
                                 onChange={e => setFormData({ ...formData, expectedReturn: e.target.value })}
                                 min="0"
                                 step="0.01"
-                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"
+                                className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
                             />
                         </div>
                         <div>
@@ -247,7 +328,7 @@ const InvestmentPlanModal = ({ isOpen, onClose, onSave, plan = null, familyProfi
                                 value={formData.targetYear}
                                 onChange={e => setFormData({ ...formData, targetYear: parseInt(e.target.value) })}
                                 min={new Date().getFullYear()}
-                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"
+                                className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
                                 required
                             />
                             {errors.targetYear && <p className="text-red-400 text-sm mt-1">{errors.targetYear}</p>}
@@ -259,7 +340,7 @@ const InvestmentPlanModal = ({ isOpen, onClose, onSave, plan = null, familyProfi
                             value={formData.notes}
                             onChange={e => setFormData({ ...formData, notes: e.target.value })}
                             rows="3"
-                            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-400"
+                            className="w-full bg-gray-700 text-white rounded-lg px-4 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
                             placeholder="Additional notes about the investment plan..."
                         />
                     </div>
@@ -295,6 +376,40 @@ const InvestmentPlanModal = ({ isOpen, onClose, onSave, plan = null, familyProfi
     );
 };
 
+// Helper function for shortfall calculation
+function getShortfall(plan) {
+    const currentYear = new Date().getFullYear();
+    const targetYear = parseInt(plan.targetYear) || currentYear + 1;
+    const years = Math.max(0, targetYear - currentYear);
+
+    const currentSavings = parseFloat(plan.currentSavings) || 0;
+    const monthlyContrib = parseFloat(plan.monthlyContribution) || 0;
+    const expectedReturn = parseFloat(plan.expectedReturn) || 8;
+    const goalAmount = parseFloat(plan.goalAmount) || 0;
+
+    if (goalAmount <= 0) return 0;
+
+    if (years <= 0) {
+        return Math.max(0, goalAmount - currentSavings);
+    }
+
+    const futureValueCurrentSavings = currentSavings * Math.pow(1 + expectedReturn / 100, years);
+
+    let futureValueMonthlyContributions = 0;
+    if (monthlyContrib > 0 && expectedReturn > 0) {
+        const monthlyRate = expectedReturn / 100 / 12;
+        const totalMonths = years * 12;
+        futureValueMonthlyContributions = monthlyContrib *
+            ((Math.pow(1 + monthlyRate, totalMonths) - 1) / monthlyRate);
+    } else if (monthlyContrib > 0) {
+        futureValueMonthlyContributions = monthlyContrib * years * 12;
+    }
+
+    const totalFutureValue = futureValueCurrentSavings + futureValueMonthlyContributions;
+
+    return Math.max(0, goalAmount - totalFutureValue);
+}
+
 export default function InvestmentPage() {
     const [investmentPlans, setInvestmentPlans] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -303,7 +418,7 @@ export default function InvestmentPage() {
     const [familyProfileId, setFamilyProfileId] = useState(null);
     const [error, setError] = useState(null);
 
-    // Get familyProfileId from localStorage - SAME AS EDUCATION MODULE
+    // Get familyProfileId from localStorage
     useEffect(() => {
         const storedFamilyProfileId = localStorage.getItem('familyProfileId');
         console.log('Retrieved familyProfileId from localStorage:', storedFamilyProfileId);
@@ -340,7 +455,6 @@ export default function InvestmentPage() {
             console.error('Error loading plans:', err);
             setInvestmentPlans([]);
 
-            // More specific error handling
             if (err.message.includes('404')) {
                 setError('Family profile not found. Please complete your family setup first.');
             } else {
@@ -472,6 +586,7 @@ export default function InvestmentPage() {
                     </div>
                 )}
 
+                {/* Header - Family ID Removed */}
                 <div className="flex justify-between items-center mb-8">
                     <div>
                         <h1 className="text-3xl font-bold text-white mb-2 flex items-center">
@@ -480,9 +595,6 @@ export default function InvestmentPage() {
                         </h1>
                         <p className="text-gray-300 text-lg">
                             Plan and track your family's investments and savings goals
-                        </p>
-                        <p className="text-gray-400 text-sm">
-                            Family Profile ID: {familyProfileId}
                         </p>
                     </div>
                     <button
@@ -565,10 +677,11 @@ export default function InvestmentPage() {
                 ) : (
                     <div className="space-y-6">
                         {investmentPlans.map(plan => {
-                            const progress = getProgress(plan);
                             const shortfall = getShortfall(plan);
+
                             return (
                                 <div key={plan.id} className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+                                    {/* Plan Header */}
                                     <div className="flex items-center justify-between mb-6">
                                         <div className="flex items-center space-x-4">
                                             <div className="p-3 bg-purple-500/20 rounded-full">
@@ -576,8 +689,8 @@ export default function InvestmentPage() {
                                             </div>
                                             <div>
                                                 <h3 className="text-xl font-bold text-white">{plan.planName}</h3>
-                                                <p className="text-gray-300">Goal: ₹{parseFloat(plan.goalAmount).toLocaleString()}</p>
-                                                <p className="text-gray-400 text-sm">Family ID: {plan.familyProfileId}</p>
+                                                <p className="text-gray-300">Target: ₹{parseFloat(plan.goalAmount).toLocaleString()}</p>
+                                                <p className="text-gray-400 text-sm">By {plan.targetYear}</p>
                                             </div>
                                         </div>
                                         <div className="flex space-x-2">
@@ -596,6 +709,7 @@ export default function InvestmentPage() {
                                         </div>
                                     </div>
 
+                                    {/* Plan Details Grid */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                                         <div className="bg-white/5 rounded-lg p-4">
                                             <p className="text-gray-400 text-sm">Target Year</p>
@@ -615,21 +729,12 @@ export default function InvestmentPage() {
                                         </div>
                                     </div>
 
-                                    <div className="mb-4">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <p className="text-gray-300 font-medium">Investment Progress</p>
-                                            <p className="text-white font-semibold">{progress.toFixed(1)}%</p>
-                                        </div>
-                                        <div className="w-full bg-gray-700 rounded-full h-3">
-                                            <div
-                                                className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-3 rounded-full transition-all duration-500"
-                                                style={{ width: `${Math.min(100, progress)}%` }}
-                                            />
-                                        </div>
-                                    </div>
+                                    {/* Dual Progress Bars */}
+                                    <DualProgressBar plan={plan} />
 
+                                    {/* Shortfall Alert */}
                                     {shortfall > 0 && (
-                                        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+                                        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mt-6">
                                             <div className="flex items-center space-x-2 mb-2">
                                                 <Target className="text-red-400" size={20} />
                                                 <p className="text-red-400 font-semibold">
