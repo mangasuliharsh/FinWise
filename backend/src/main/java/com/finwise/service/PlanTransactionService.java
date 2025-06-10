@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -18,9 +19,9 @@ public class PlanTransactionService {
     private final FamilyProfileRepository familyRepo;
 
     public PlanTransaction addTransaction(Long familyProfileId, String planType, Long planId, String action, BigDecimal amount, String description) {
-        FamilyProfile family = familyRepo.findById(familyProfileId).orElseThrow();
+        Optional<FamilyProfile> family = familyRepo.findById(familyProfileId);
         PlanTransaction tx = new PlanTransaction();
-        tx.setFamilyProfile(family);
+        tx.setFamilyProfile(family.get());
         tx.setPlanType(planType);
         tx.setPlanId(planId);
         tx.setAction(action);
@@ -30,7 +31,7 @@ public class PlanTransactionService {
         return repo.save(tx);
     }
 
-    public List<PlanTransaction> getRecentTransactions(Long familyProfileId) {
-        return repo.findTop5ByFamilyProfile_IdOrderByDateTimeDesc(familyProfileId);
+    public List<PlanTransaction> getRecentTransactions(FamilyProfile familyProfile) {
+        return repo.findTop5ByFamilyProfileOrderByDateTimeDesc(familyProfile);
     }
 }

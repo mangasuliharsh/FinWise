@@ -20,9 +20,4 @@ public class PlanTransactionController {
         PlanTransaction tx = service.addTransaction(dto.getFamilyProfileId(), dto.getPlanType(), dto.getPlanId(), dto.getAction(), dto.getAmount(), dto.getDescription());
         return ResponseEntity.ok(tx);
     }
-
-    @GetMapping("/recent/{familyProfileId}")
-    public ResponseEntity<List<PlanTransaction>> getRecent(@PathVariable Long familyProfileId) {
-        return ResponseEntity.ok(service.getRecentTransactions(familyProfileId));
-    }
 }

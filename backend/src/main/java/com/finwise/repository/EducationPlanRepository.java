@@ -25,4 +25,6 @@ public interface EducationPlanRepository extends JpaRepository<EducationPlan, Lo
     void deleteByChild(@Param("child") Child child);
 
     List<EducationPlan> findByChild_FamilyProfile_Id(Long familyProfileId);
+
+    List<EducationPlan> findByChild_FamilyProfile_User_Id(Long childFamilyProfileUserId);
 }

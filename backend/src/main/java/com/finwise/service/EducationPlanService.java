@@ -15,6 +15,7 @@ import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,15 +25,18 @@ public class EducationPlanService {
     private final FamilyProfileRepository familyProfileRepository;
     private final ChildRepository childRepository;
     private final ModelMapper modelMapper;
+    private final PlanTransactionService planTransactionService;
 
     public EducationPlanService(EducationPlanRepository educationPlanRepository,
                                 FamilyProfileRepository familyProfileRepository,
                                 ChildRepository childRepository,
-                                ModelMapper modelMapper) {
+                                ModelMapper modelMapper,
+                                PlanTransactionService planTransactionService) {
         this.educationPlanRepository = educationPlanRepository;
         this.familyProfileRepository = familyProfileRepository;
         this.childRepository = childRepository;
         this.modelMapper = modelMapper;
+        this.planTransactionService = planTransactionService;
     }
 
     public EducationPlanDTO createEducationPlan(Long familyProfileId, @Valid EducationPlanDTO dto) {
@@ -54,6 +58,7 @@ public class EducationPlanService {
         ));
 
         EducationPlan saved = educationPlanRepository.save(plan);
+        planTransactionService.addTransaction(familyProfileId,"Education",saved.getId(),"Added",saved.getEstimatedTotalCost(),"");
         return modelMapper.map(saved, EducationPlanDTO.class);
     }
 
@@ -103,6 +108,7 @@ public class EducationPlanService {
         ));
 
         EducationPlan updated = educationPlanRepository.save(existing);
+        planTransactionService.addTransaction(updated.getFamilyProfile().getId(),"Education",updated.getId(),"Upated",updated.getEstimatedTotalCost(),"");
         return convertToDTO(updated);
     }
     private EducationPlanDTO convertToDTO(EducationPlan plan) {
@@ -117,6 +123,9 @@ public class EducationPlanService {
         if (!educationPlanRepository.existsById(id)) {
             throw new RuntimeException("Education plan not found");
         }
+        Optional<EducationPlan> optionalEducationPlan = educationPlanRepository.findById(id);
+        EducationPlan deleted = optionalEducationPlan.get();
+        planTransactionService.addTransaction(deleted.getFamilyProfile().getId(),"Education",deleted.getId(),"Deleted",deleted.getEstimatedTotalCost(),"");
         educationPlanRepository.deleteById(id);
     }
 
@@ -150,8 +159,9 @@ public class EducationPlanService {
             ));
         }
 
-        EducationPlan updatedPlan = educationPlanRepository.save(plan);
-        return modelMapper.map(updatedPlan, EducationPlanDTO.class);
+        EducationPlan updated = educationPlanRepository.save(plan);
+        planTransactionService.addTransaction(updated.getFamilyProfile().getId(),"Education",updated.getId(),"Upated",updated.getEstimatedTotalCost(),"");
+        return modelMapper.map(updated, EducationPlanDTO.class);
     }
 
     private BigDecimal calculateInflationAdjustedCost(BigDecimal currentCost, int years, BigDecimal inflationRate) {
@@ -163,5 +173,19 @@ public class EducationPlanService {
 
     public List<EducationPlan> findByFamilyProfile(FamilyProfile familyProfile) {
         return educationPlanRepository.findByChild_FamilyProfile(familyProfile);
+    }
+
+    public List<EducationPlanDTO> getEducationPlansByFamily(Long familyId) {
+        List<EducationPlan> educationPlans = educationPlanRepository.findByChild_FamilyProfile_Id(familyId);
+        return educationPlans.stream()
+                .map(educationPlan -> modelMapper.map(educationPlan,EducationPlanDTO.class))
+                .collect(Collectors.toList());
+    }
+
+    public List<EducationPlanDTO> getPlansByUserId(Long userId) {
+        List<EducationPlan> educationPlans = educationPlanRepository.findByChild_FamilyProfile_User_Id(userId);
+        return educationPlans.stream()
+                .map(educationPlan -> modelMapper.map(educationPlan,EducationPlanDTO.class))
+                .collect(Collectors.toList());
     }
 }

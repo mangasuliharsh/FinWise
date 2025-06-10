@@ -6,6 +6,7 @@ import com.finwise.entity.User;
 import com.finwise.repository.FamilyProfileRepository;
 import com.finwise.repository.UserRepository;
 import com.finwise.util.Util;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
@@ -57,18 +58,40 @@ public class FamilyProfileService {
     }
 
     public FamilyProfileDTO updateFamilyProfile(Long id, FamilyProfileDTO familyProfile) {
+        // Validate input parameters
+        if (id == null) {
+            throw new IllegalArgumentException("Profile ID cannot be null");
+        }
+        if (familyProfile == null) {
+            throw new IllegalArgumentException("Family profile data cannot be null");
+        }
+
+        // Find existing profile
         FamilyProfile existing = familyProfileRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Profile not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Family profile not found with id: " + id));
 
-        modelMapper.map(familyProfile, existing);
+        // Manual mapping to avoid null value issues
+        if (familyProfile.getFamilySize() != -1) {
+            existing.setFamilySize(familyProfile.getFamilySize());
+        }
+        if (familyProfile.getMonthlyIncome() != null) {
+            existing.setMonthlyIncome(familyProfile.getMonthlyIncome());
+        }
+        if (familyProfile.getMonthlyExpenses() != null) {
+            existing.setMonthlyExpenses(familyProfile.getMonthlyExpenses());
+        }
+        if (familyProfile.getLocation() != null && !familyProfile.getLocation().trim().isEmpty()) {
+            existing.setLocation(familyProfile.getLocation().trim());
+        }
+        if (familyProfile.getRiskTolerance() != null) {
+            existing.setRiskTolerance(familyProfile.getRiskTolerance());
+        }
 
-        User user = userRepository.findById(familyProfile.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        existing.setUser(user);
-
+        // Save and return
         FamilyProfile updated = familyProfileRepository.save(existing);
         return modelMapper.map(updated, FamilyProfileDTO.class);
     }
+
 
     public void deleteFamilyProfile(Long id) {
         if (!familyProfileRepository.existsById(id)) {

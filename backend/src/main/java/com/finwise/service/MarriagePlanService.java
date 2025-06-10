@@ -21,11 +21,13 @@ public class MarriagePlanService {
     private final MarriagePlanRepository marriagePlanRepository;
     private final FamilyProfileRepository familyProfileRepository;
     private final ModelMapper modelMapper;
+    private final PlanTransactionService planTransactionService;
 
-    public MarriagePlanService(MarriagePlanRepository marriagePlanRepository, FamilyProfileRepository familyProfileRepository, ModelMapper modelMapper) {
+    public MarriagePlanService(MarriagePlanRepository marriagePlanRepository, FamilyProfileRepository familyProfileRepository, ModelMapper modelMapper,PlanTransactionService planTransactionService) {
         this.marriagePlanRepository = marriagePlanRepository;
         this.familyProfileRepository = familyProfileRepository;
         this.modelMapper = modelMapper;
+        this.planTransactionService = planTransactionService;
     }
 
     public MarriagePlanDTO createMarriagePlan(Long familyProfileId, MarriagePlanDTO dto) {
@@ -34,8 +36,9 @@ public class MarriagePlanService {
 
         MarriagePlan plan = modelMapper.map(dto, MarriagePlan.class);
         plan.setFamilyProfile(profile);
-
-        return modelMapper.map(marriagePlanRepository.save(plan), MarriagePlanDTO.class);
+        MarriagePlan saved = marriagePlanRepository.save(plan);
+        planTransactionService.addTransaction(familyProfileId,"Marriage Plan",saved.getId(),"Added",saved.getEstimatedTotalCost(),"");
+        return modelMapper.map(saved, MarriagePlanDTO.class);
     }
 
     public MarriagePlanDTO getMarriagePlan(Long id) {
@@ -55,6 +58,9 @@ public class MarriagePlanService {
         if (!marriagePlanRepository.existsById(id)) {
             throw new RuntimeException("Marriage Plan not found");
         }
+        Optional<MarriagePlan> optionalMarriagePlan = marriagePlanRepository.findById(id);
+        MarriagePlan plan = optionalMarriagePlan.get();
+        planTransactionService.addTransaction(plan.getFamilyProfile().getId(),"Marriage Plan",plan.getId(),"Deleted",plan.getEstimatedTotalCost(),"");
         marriagePlanRepository.deleteById(id);
     }
 
@@ -63,8 +69,10 @@ public class MarriagePlanService {
                 .orElseThrow(() -> new RuntimeException("Marriage Plan not found"));
 
         dto.setId(id);
-        modelMapper.map(dto, existing);  // Copy all non-null values from DTO to entity
-        return modelMapper.map(marriagePlanRepository.save(existing), MarriagePlanDTO.class);
+        modelMapper.map(dto, existing);
+        MarriagePlan plan = marriagePlanRepository.save(existing);
+        planTransactionService.addTransaction(plan.getFamilyProfile().getId(),"Marriage Plan",plan.getId(),"Updated",plan.getEstimatedTotalCost(),"");
+        return modelMapper.map(plan, MarriagePlanDTO.class);
     }
 
     public MarriagePlanDTO patchMarriagePlan(Long id, Map<String, Object> updates) {
@@ -78,11 +86,18 @@ public class MarriagePlanService {
                 ReflectionUtils.setField(field, plan, value);
             }
         });
-
+        planTransactionService.addTransaction(plan.getFamilyProfile().getId(),"Marriage Plan",plan.getId(),"Updated",plan.getEstimatedTotalCost(),"");
         return modelMapper.map(plan, MarriagePlanDTO.class);
     }
 
     public List<MarriagePlan> findByFamilyProfile(FamilyProfile familyProfile) {
         return marriagePlanRepository.findByFamilyProfile(familyProfile);
+    }
+
+    public List<MarriagePlanDTO> getPlansByUserId(Long userId) {
+        List<MarriagePlan> marriagePlans = marriagePlanRepository.findByFamilyProfile_User_Id(userId);
+        return marriagePlans.stream()
+                .map(marriagePlan -> modelMapper.map(marriagePlan,MarriagePlanDTO.class))
+                .collect(Collectors.toList());
     }
 }
